@@ -1,2 +1,2 @@
 
-### SPHERHARM Package to simulation complex shaped granular particles
+### SPHERHARM Package to simulate complex shaped granular particles
