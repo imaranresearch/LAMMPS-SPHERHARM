@@ -27,7 +27,7 @@
 #include "math_extra.h"
 
 using namespace LAMMPS_NS;
-
+#include <iostream>
 
 /* ---------------------------------------------------------------------- */
 
@@ -82,7 +82,7 @@ double ComputeEFunctionSpherharm::compute_scalar()
   double vhalf[3], whalf[3], angmomhalf[3], qfoo[4];
 
   dt2 = dt/2.0;
-  dtf = 0.5 * update->dt * force->ftm2v;
+  dtf = 1.0 * update->dt * force->ftm2v;
   dw_back = dw_back_nextstep; // Getting the back half from the contribution calculated in the previous time step
   double efunction = 0.0;
   double efuture = 0.0;
@@ -123,7 +123,7 @@ double ComputeEFunctionSpherharm::compute_scalar()
   temp *= pfactor;
   workstore += (long double)(temp + dw_back);
   scalar = double(workstore);
-
+  //std::cout<<"print"<<"\t"<<dw_back<<"\t"<<workstore<<"\t"<<temp<<"\t"<<pfactor<<std::endl;
   temp = 0.0;
   MPI_Allreduce(&efuture,&temp,1,MPI_DOUBLE,MPI_SUM,world);
   temp *= pfactor;

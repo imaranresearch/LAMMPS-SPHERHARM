@@ -1661,7 +1661,7 @@ void AtomVecSpherharm::dump_ply(int ii, int shape, int plycount, double irot[3][
   }
 
   std::ofstream outfile;
-  outfile.open("plys/" + charin  + "_" + std::to_string(plycount)  + ".ply");
+  outfile.open("plys/" + std::to_string(ii)  + "_" + std::to_string(plycount)  + ".ply");
   if (outfile.is_open()) {
     outfile << "ply" << "\n";
     outfile << "format ascii 1.0" << "\n" << "element vertex " <<
