@@ -69,7 +69,7 @@ PairSH::PairSH(LAMMPS *lmp) : Pair(lmp)
   // Todo make this an input to the pair style, i.e. let the user specify the order of quadrature if they wish
   // Todo The same could go for the radius tolerance...
  // num_pole_quad = 100;
-  radius_tol = 1e-9; // %, for very small overlaps this percentage tolerance must be very fine
+  radius_tol = 1e-6; // %, for very small overlaps this percentage tolerance must be very fine
 }
 
 /* ---------------------------------------------------------------------- */
@@ -126,7 +126,6 @@ void PairSH::compute(int eflag, int vflag)
   maxshexpan = avec->get_max_expansion();
   file_count++;
   MPI_Comm_rank(world,&me);
-
   // loop over neighbors of my atoms
   for (ii = 0; ii < inum; ii++) {
     i = ilist[ii];
@@ -142,7 +141,7 @@ void PairSH::compute(int eflag, int vflag)
     // Quaternion to get from space frame to body frame for atom "i"
     MathExtra::qconjugate(quat[i], iquat_sf_bf);
     MathExtra::qnormalize(iquat_sf_bf);
-
+    // avec->dump_ply(i, ishtype, file_count, irot, x[i]);
     for (jj = 0; jj < jnum; jj++) {
       cont_calc = false;
       j = jlist[jj];
@@ -161,7 +160,7 @@ void PairSH::compute(int eflag, int vflag)
       MathExtra::zero3(iforce);
       MathExtra::zero3(torsum);
 
-          //avec->dump_ply(i, ishtype, file_count, irot, x[i]);
+      // avec->dump_ply(i, ishtype, file_count, irot, x[i]);
       if (r<radi+radj) {
 
         if (r > radj) { // Particle i's centre is not inside Particle j, can use spherical cap from particle i
@@ -210,9 +209,11 @@ void PairSH::compute(int eflag, int vflag)
           if (maxshexpan!=0){
             calc_norm_force_torque(kk_count, ishtype, jshtype, iang, radi, radj, iquat_cont, iquat_sf_bf, x[i], x[j],
                                    irot,jrot, vol_overlap, iforce, torsum, factor, first_call, ii, jj);
+          write_vol_overlap_to_file(maxshexpan,file_count,vol_overlap,true);
           }
           else{ // simplified case of sphere-sphere overlap
             sphere_sphere_norm_force_torque(radi, radj, radi+radj-r, x[i], x[j], iforce, torsum, vol_overlap);
+          write_vol_overlap_to_file(maxshexpan,file_count,vol_overlap,true);
           }
 
           // Might want to check if the volume of overlap is zero and continue if so, i.e.
@@ -356,7 +357,7 @@ void PairSH::coeff(int narg, char **arg)
   utils::bounds(FLERR,arg[1],1,atom->ntypes,jlo,jhi,error);
   normal_coeffs_one = utils::numeric(FLERR,arg[2],false,lmp);// kn
   exponent_in = utils::numeric(FLERR,arg[3],false,lmp);// m
-  num_pole_quad_in = utils::numeric(FLERR,arg[4],false,lmp);// num_pole_quad
+  num_pole_quad_in = utils::numeric(FLERR,arg[4],false,lmp);// Adding num_pole_quad as user input in the script
   num_pole_quad = num_pole_quad_in;
   if (exponent==-1){
     exponent=exponent_in;
@@ -664,18 +665,18 @@ void PairSH::calc_norm_force_torque(int kk_count, int ishtype, int jshtype, doub
         // Code below is useful if wanting to visualise the quadrature points which make up the surface containing
         // the volume of overlap
         ///////////
-        double zero_norm[3];
-        MathExtra::zero3(zero_norm);
-        if (file_count % 1 == 0) {
-          if ((first_call) & (ii == 0) & (jj == 0)) {
-            first_call = false;
-            write_surfpoints_to_file(ix_sf, false, 1, 1, inorm_sf);
-            //write_surfpoints_to_file(jx_sf, true, 0, 0, zero_norm);
-          } else if (ii == 0 & jj == 0) {
-            write_surfpoints_to_file(ix_sf, true, 1, 1, inorm_sf);
-	    //write_surfpoints_to_file(jx_sf, true, 0, 0, zero_norm);
-          }
-        }
+      //   double zero_norm[3];
+      //   MathExtra::zero3(zero_norm);
+      //   if (file_count % 1 == 0) {
+      //     if ((first_call) & (ii == 0) & (jj == 0)) {
+      //       first_call = false;
+      //       write_surfpoints_to_file(ix_sf, false, 1, 1, inorm_sf);
+      //       //write_surfpoints_to_file(jx_sf, true, 0, 0, zero_norm);
+      //     } else if (ii == 0 & jj == 0) {
+      //       write_surfpoints_to_file(ix_sf, true, 1, 1, inorm_sf);
+	    // //write_surfpoints_to_file(jx_sf, true, 0, 0, zero_norm);
+      //     }
+      //   }
         ///////////
 
       } // check_contact
@@ -843,6 +844,42 @@ double PairSH::find_intersection_by_bisection(double rad_body, double radtol, do
   }
   return rad_sample;
 }
+
+
+/* ----------------------------------------------------------------------
+  Write the overlap volume in a file --- MI tesintg...
+
+  This method writes the overlap volume between the particles at different time steps.
+  files name is according to the number of quadrature points used for the interaction calculation.
+------------------------------------------------------------------------- */
+
+int PairSH:: write_vol_overlap_to_file( int maxshexpan,int file_count, double vol_overlap, bool append_file1)  {
+
+//cur_time += update->dt;
+  //int maxshexpan;
+  maxshexpan = avec->get_max_expansion();
+
+  std::ofstream outfile1;
+  if (append_file1){
+    outfile1.open("vol_overlap_N_"+std::to_string(maxshexpan)+"_m_"+std::to_string(num_pole_quad)+".dat", std::ios_base::app);
+    if (outfile1.is_open()) {
+      //outfile1 << "t     vol_overlap" << "\n";
+        outfile1 << std::setprecision(16) <<file_count << " " << vol_overlap << "\n";
+      outfile1.close();
+    } else std::cout << "Unable to open file";
+  }
+  else {
+//    cur_time += update->dt;
+    outfile1.open("vol_overlap_N_"+std::to_string(maxshexpan)+"_m_"+std::to_string(num_pole_quad)+".dat");
+    if (outfile1.is_open()) {
+      //outfile1 << "t     vol_overlap" << "\n";
+        outfile1 << std::setprecision(16) << file_count << " " << vol_overlap << "\n";
+      outfile1.close();
+    } else std::cout << "Unable to open file";
+  }
+  return 0;
+};
+
 
 
 /* ----------------------------------------------------------------------

@@ -514,7 +514,7 @@ void FixWallSpherharm::vol_based(double dx, double dy, double dz, double iang,
     }
 
     static int file_count = 0;
-    avec->dump_ply(0,ishtype,file_count,irot,x);
+//    avec->dump_ply(0,ishtype,file_count,irot,x);
     file_count++;
 
   }

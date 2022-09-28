@@ -527,7 +527,7 @@ void AtomVecSpherharm::calcexpansionfactors()
       for (int j = 0; j < num_quadrature; j++) { // For each phi value (k corresponds to angle pair)
         phi = (2.0 * MY_PI * (double)(j)) / ((double)((num_quadrature)));
         loc = nloc;
-        P_n_m = std::assoc_legendre(n, 0, x_val);
+        P_n_m = std::assoc_legendre(n, 0, x_val); // Using C++17 libary function for Associated Legndre calculation
         r_n[k] += shcoeffs_byshape[0][(n + 1) * (n + 2) - 2] * P_n_m;
         for (int m = n; m > 0; m--) { // For each m in current harmonic n
           mphi = (double) m * phi;
@@ -622,6 +622,9 @@ void AtomVecSpherharm::calcexpansionfactors_gauss()
 // P_n_m_c17 = std::assoc_legendre(2, 2, 0.0);
 // // P_n_m = plegendre(0, 0, cos(theta));
 // std::cout<<P_n_m_c17<<"\t"<<plegendre(2, 2, 0.0)<<std::endl;
+// Methode contains C++17 libray  function to calculate normalized Associted legendre function...
+// Normalization factor is multiplied to the output of the inbuild function..
+
 
   for (int sht = 0; sht < nshtypes; sht++) {
 
@@ -1658,7 +1661,7 @@ void AtomVecSpherharm::dump_ply(int ii, int shape, int plycount, double irot[3][
   }
 
   std::ofstream outfile;
-  outfile.open("plys/" + charin  + "_" + std::to_string(plycount)  + ".ply");
+  outfile.open("plys/" + std::to_string(ii)  + "_" + std::to_string(plycount)  + ".ply");
   if (outfile.is_open()) {
     outfile << "ply" << "\n";
     outfile << "format ascii 1.0" << "\n" << "element vertex " <<
