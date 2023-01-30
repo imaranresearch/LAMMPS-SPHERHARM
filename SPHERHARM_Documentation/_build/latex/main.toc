@@ -1,0 +1,15 @@
+\babel@toc {english}{}\relax 
+\contentsline {section}{\numberline {0.1}Getting Started}{1}{section.0.1}%
+\contentsline {section}{\numberline {0.2}SPHERHARM Theory}{1}{section.0.2}%
+\contentsline {section}{\numberline {0.3}Implementation of SPHERHARM in LAMMPS}{2}{section.0.3}%
+\contentsline {subsection}{\numberline {0.3.1}Atom style}{2}{subsection.0.3.1}%
+\contentsline {subsubsection}{Syntax}{2}{subsubsection*.3}%
+\contentsline {subsection}{\numberline {0.3.2}Pair style}{3}{subsection.0.3.2}%
+\contentsline {subsubsection}{Syntax}{3}{subsubsection*.4}%
+\contentsline {subsection}{\numberline {0.3.3}Fix style}{3}{subsection.0.3.3}%
+\contentsline {subsubsection}{fix NVE/sh}{3}{subsubsection*.5}%
+\contentsline {subsubsection}{Syntax}{3}{subsubsection*.6}%
+\contentsline {subsection}{\numberline {0.3.4}Compute styles}{4}{subsection.0.3.4}%
+\contentsline {section}{\numberline {0.4}Validation tests}{4}{section.0.4}%
+\contentsline {subsection}{\numberline {0.4.1}Energy conservation test}{4}{subsection.0.4.1}%
+\contentsline {section}{\numberline {0.5}Indices and tables}{6}{section.0.5}%

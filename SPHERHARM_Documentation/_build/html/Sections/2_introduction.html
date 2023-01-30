@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SPHERHARM Theory &mdash; SPHERHARM documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/lammps.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/sphinx_highlight.js"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Implementation of SPHERHARM in LAMMPS" href="3_implementation.html" />
+    <link rel="prev" title="Getting Started" href="1_getting_started.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html">
+            <img src="../_static/logo.png" class="logo" alt="Logo"/>
+          </a>
+              <div class="lammps_version">Version: <b></b></div>
+              <div class="lammps_release">git info: 0.1</div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="1_getting_started.html">Getting Started</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">SPHERHARM Theory</a></li>
+<li class="toctree-l1"><a class="reference internal" href="3_implementation.html">Implementation of SPHERHARM in LAMMPS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="4_validation.html">Validation tests</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">The implementation of DEM using Spherical Harmonic  in LAMMPS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>SPHERHARM Theory</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/Sections/2_introduction.rst.txt" rel="nofollow"> View page source</a>
+          <a href="https://github.com/imaranresearch/LAMMPS-SPHERHARM/tree/develop">Website</a>
+          <!--   <a href="Commands_all.html">Commands</a> -->
+      </li>
+  </ul><div class="rst-breadcrumbs-buttons" role="navigation" aria-label="Sequential page navigation">
+        <a href="1_getting_started.html" class="btn btn-neutral float-left" title="Getting Started" accesskey="p"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="3_implementation.html" class="btn btn-neutral float-right" title="Implementation of SPHERHARM in LAMMPS" accesskey="n">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+  </div>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="spherharm-theory">
+<h1>SPHERHARM Theory<a class="headerlink" href="#spherharm-theory" title="Permalink to this heading">¶</a></h1>
+<p>Spherical harmonics can be used to represent a  closed star-like i.e., any line segment drawn from an origin, O, inside the particle crosses the  contour of the particle’s only once  three-dimensional surface <span id="id1"></span>. This is achieved using both the spherical harmonic functions <span class="math notranslate nohighlight">\(Y_n^m(\theta,\phi)\)</span> and the spherical harmonic coefficients <span class="math notranslate nohighlight">\(a_{nm}\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[r(\theta,\phi) = \sum_{n=0}^\infty\sum_{m=-n}^n a_{nm} Y_n^m(\theta, \phi) \approx r(N,\theta,\phi) = \sum_{n=0}^N\sum_{m=-n}^n a_{nm} Y_n^m(\theta, \phi)\]</div>
+<p>where <span class="math notranslate nohighlight">\(r(\theta,\phi)\)</span> is any smooth function defined on the unit sphere with <span class="math notranslate nohighlight">\(0\le\theta\le\pi\)</span> and <span class="math notranslate nohighlight">\(0\le\phi\le 2\pi\)</span>
+<span id="id2"></span>.</p>
+<p>In this case, <span class="math notranslate nohighlight">\(r(\theta,\phi)\)</span> describes the particle radius which is measured from its centre of mass. In practice, the above is approximated by truncating the initial sum from infinity to <span class="math notranslate nohighlight">\(\theta\)</span>. Spherical harmonic function, <span class="math notranslate nohighlight">\(Y_n^m\)</span> of a degree <span class="math notranslate nohighlight">\(n\)</span> and order <span class="math notranslate nohighlight">\(m\)</span> is given as</p>
+<div class="math notranslate nohighlight">
+\[Y_n^m(\theta, \phi) = \sqrt{\frac{(2n+1)(n-m)!}{4\pi(n+m)!}}P_n^m(\cos(\theta))e^{im\phi}\]</div>
+<p>where <span class="math notranslate nohighlight">\(P_n^m(x)\)</span> is the associated Legendre function, which can be calculated efficiently through the recurrence relations described by Press et al.&#64;~cite{Press2007}.</p>
+<p>Garboczi details how the coefficients <span class="math notranslate nohighlight">\(a_{nm}\)</span> can be extracted from a real particle using X-ray tomography and selecting radius measurement points that correspond with point of Gaussian quadrature such that
+can be solved, where the asterisk in the above denotes the complex conjugate  <span id="id3"></span>.</p>
+<div class="math notranslate nohighlight">
+\[a_{nm} = \int_0^{2\pi}\int_0^\pi  d\phi d\theta \sin(\theta) r(\theta, \phi) Y_n^m(\theta, \phi)^*\]</div>
+<a class="reference internal image-reference" href="../_images/N_0.png"><img alt="N =0" src="../_images/N_0.png" style="width: 30%;" /></a>
+<a class="reference internal image-reference" href="../_images/N_15.png"><img alt="N = 15" src="../_images/N_15.png" style="width: 30%;" /></a>
+<a class="reference internal image-reference" href="../_images/N_25.png"><img alt="N = 25" src="../_images/N_25.png" style="width: 30%;" /></a>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="1_getting_started.html" class="btn btn-neutral float-left" title="Getting Started" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="3_implementation.html" class="btn btn-neutral float-right" title="Implementation of SPHERHARM in LAMMPS" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Mohammad Imaran.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(false);
+      });
+  </script> 
+
+</body>
+</html>
