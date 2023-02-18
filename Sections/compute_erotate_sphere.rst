@@ -1,39 +1,34 @@
-.. index:: compute erotate/sphere
+.. index:: compute erotate/spherharm
 
-compute erotate/sphere command
-==============================
+compute erotate/spherharm command
+===================================
 
 Syntax
 """"""
 
 .. parsed-literal::
 
-   compute ID group-ID erotate/sphere
+   compute ID group-ID erotate/spherespherharm
 
 * ID, group-ID are documented in :doc:`compute <compute>` command
-* erotate/sphere = style name of this compute command
+* erotate/spherharm = style name of this compute command
 
 Examples
 """"""""
 
 .. code-block:: LAMMPS
 
-   compute 1 all erotate/sphere
+   compute 1 all erotate/spherharm
 
 Description
 """""""""""
 
 Define a computation that calculates the rotational kinetic energy of
-a group of spherical particles.
+a group of spherical harmonic particles.
 
 The rotational energy is computed as 1/2 I w\^2, where I is the moment
 of inertia for a sphere and w is the particle's angular velocity.
 
-.. note::
-
-   For :doc:`2d models <dimension>`, particles are treated as
-   spheres, not disks, meaning their moment of inertia will be the same
-   as in 3d.
 
 Output info
 """""""""""
@@ -50,11 +45,8 @@ Restrictions
 """"""""""""
 
 This compute requires that atoms store a radius and angular velocity
-(omega) as defined by the :doc:`atom_style sphere <atom_style>` command.
+(omega) as defined by the :doc:`atom_style spherharm <atom_style>` command.
 
-All particles in the group must be finite-size spheres or point
-particles.  They cannot be aspherical.  Point particles will not
-contribute to the rotational energy.
 
 Related commands
 """"""""""""""""
