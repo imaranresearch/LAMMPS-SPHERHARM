@@ -1,6 +1,6 @@
 .. index:: compute efunction/spherharm
 
-compute erotate/spherharm command
+compute efunction/spherharm command
 ===================================
 
 Syntax

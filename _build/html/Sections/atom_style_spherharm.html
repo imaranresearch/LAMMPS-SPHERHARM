@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>compute efunction/spherharm command &mdash; SPHERHARM documentation</title>
+  <title>atom_style spherharm command &mdash; SPHERHARM documentation</title>
       <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="../_static/css/lammps.css" type="text/css" />
@@ -24,8 +24,8 @@
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="compute erotate/spherharm command" href="compute_erotate_sphere.html" />
-    <link rel="prev" title="atom_style spherharm command" href="atom_style_spherharm.html" /> 
+    <link rel="next" title="compute efunction/spherharm command" href="compute_efunction_sphere.html" />
+    <link rel="prev" title="Implementation of SPHERHARM in LAMMPS" href="3_implementation.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -51,17 +51,17 @@
 <li class="toctree-l1"><a class="reference internal" href="1_getting_started.html">Getting Started</a></li>
 <li class="toctree-l1"><a class="reference internal" href="2_introduction.html">SPHERHARM Theory</a></li>
 <li class="toctree-l1"><a class="reference internal" href="3_implementation.html">Implementation of SPHERHARM in LAMMPS</a></li>
-<li class="toctree-l1"><a class="reference internal" href="atom_style_spherharm.html">atom_style spherharm command</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">compute efunction/spherharm command</a><ul>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">atom_style spherharm command</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#syntax">Syntax</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#examples">Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#description">Description</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#output-info">Output info</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#restart-fix-modify-output-run-start-stop-minimize-info">Restart, fix_modify, output, run start/stop, minimize info</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#restrictions">Restrictions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#related-commands">Related commands</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#default">Default</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="compute_efunction_sphere.html">compute efunction/spherharm command</a></li>
 <li class="toctree-l1"><a class="reference internal" href="compute_erotate_sphere.html">compute erotate/spherharm command</a></li>
 <li class="toctree-l1"><a class="reference internal" href="fix_nvt_sh.html">fix nve/sh</a></li>
 <li class="toctree-l1"><a class="reference internal" href="fix_wall_sh.html">fix wall/gran command</a></li>
@@ -83,63 +83,71 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
-      <li>compute efunction/spherharm command</li>
+      <li>atom_style spherharm command</li>
       <li class="wy-breadcrumbs-aside">
-            <a href="../_sources/Sections/compute_efunction_sphere.rst.txt" rel="nofollow"> View page source</a>
+            <a href="../_sources/Sections/atom_style_spherharm.rst.txt" rel="nofollow"> View page source</a>
           <a href="https://github.com/imaranresearch/LAMMPS-SPHERHARM/tree/develop">Website</a>
           <!--   <a href="Commands_all.html">Commands</a> -->
       </li>
   </ul><div class="rst-breadcrumbs-buttons" role="navigation" aria-label="Sequential page navigation">
-        <a href="atom_style_spherharm.html" class="btn btn-neutral float-left" title="atom_style spherharm command" accesskey="p"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="compute_erotate_sphere.html" class="btn btn-neutral float-right" title="compute erotate/spherharm command" accesskey="n">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="3_implementation.html" class="btn btn-neutral float-left" title="Implementation of SPHERHARM in LAMMPS" accesskey="p"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="compute_efunction_sphere.html" class="btn btn-neutral float-right" title="compute efunction/spherharm command" accesskey="n">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
   </div>
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="compute-efunction-spherharm-command">
-<span id="index-0"></span><h1>compute efunction/spherharm command<a class="headerlink" href="#compute-efunction-spherharm-command" title="Permalink to this heading">¶</a></h1>
+  <section id="atom-style-spherharm-command">
+<span id="index-0"></span><h1>atom_style spherharm command<a class="headerlink" href="#atom-style-spherharm-command" title="Permalink to this heading">¶</a></h1>
 <section id="syntax">
 <h2>Syntax<a class="headerlink" href="#syntax" title="Permalink to this heading">¶</a></h2>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">compute</span> <span class="n">ID</span> <span class="n">group</span><span class="o">-</span><span class="n">ID</span> <span class="n">efunction</span><span class="o">/</span><span class="n">spherespherharm</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">atom_style</span> <span class="n">spherharm</span> <span class="n">N</span> <span class="n">numerical_quad1</span> <span class="n">shape_coeff</span><span class="o">.</span><span class="n">dat</span>
 </pre></div>
 </div>
 <ul class="simple">
-<li><p>ID, group-ID are documented in <span class="xref std std-doc">compute</span> command</p></li>
-<li><p>efunction/spherharm = style name of this compute command</p></li>
+<li><p>ID, group-ID are documented in atom_style  command</p></li>
+<li><p>spherharm = style name of this atom_style command</p></li>
 </ul>
 </section>
 <section id="examples">
 <h2>Examples<a class="headerlink" href="#examples" title="Permalink to this heading">¶</a></h2>
-<div class="highlight-LAMMPS notranslate"><div class="highlight"><pre><span></span>compute 1 all efunction/spherharm
+<div class="highlight-LAMMPS notranslate"><div class="highlight"><pre><span></span>atom_style spherharm 21 45 shape_1.dat
 </pre></div>
 </div>
 </section>
 <section id="description">
 <h2>Description<a class="headerlink" href="#description" title="Permalink to this heading">¶</a></h2>
-<p>Define a computation that calculates the potential energy of
-a group of spherical harmonic particles.</p>
-<p>The rotational energy is computed as 1/2 I w^2, where I is the moment
-of inertia for a sphere and w is the particle’s angular velocity.</p>
+<p>Perform constant NVE integration to update position, velocity, angular
+velocity, and quaternion orientation for spherical harmonic
+particles in the group each timestep.  V is volume; E is energy.  This
+creates a system trajectory consistent with the microcanonical
+ensemble.</p>
+<p>This fix differs from the <span class="xref std std-doc">fix nve</span> command, which
+assumes point particles and only updates their position and velocity.
+It also differs from the <span class="xref std std-doc">fix nve/bpm/sphere</span>
+command which assumes only finite-size spherical particles.</p>
 </section>
-<section id="output-info">
-<h2>Output info<a class="headerlink" href="#output-info" title="Permalink to this heading">¶</a></h2>
-<p>This compute calculates a global scalar (the KE).  This value can be
-used by any command that uses a global scalar value from a compute as
-input.  See the <span class="xref std std-doc">Howto output</span> page for an
-overview of LAMMPS output options.</p>
-<p>The scalar value calculated by this compute is “extensive”.  The
-scalar value will be in energy <span class="xref std std-doc">units</span>.</p>
+<hr class="docutils" />
+<section id="restart-fix-modify-output-run-start-stop-minimize-info">
+<h2>Restart, fix_modify, output, run start/stop, minimize info<a class="headerlink" href="#restart-fix-modify-output-run-start-stop-minimize-info" title="Permalink to this heading">¶</a></h2>
+<p>No information about this fix is written to <span class="xref std std-doc">binary restart files</span>.  None of the <span class="xref std std-doc">fix_modify</span> options are
+relevant to this fix.  No global or per-atom quantities are stored by
+this fix for access by various <span class="xref std std-doc">output commands</span>.
+No parameter of this fix can be used with the <em>start/stop</em> keywords of
+the <span class="xref std std-doc">run</span> command.  This fix is not invoked during
+<span class="xref std std-doc">energy minimization</span>.</p>
 </section>
 <section id="restrictions">
 <h2>Restrictions<a class="headerlink" href="#restrictions" title="Permalink to this heading">¶</a></h2>
-<p>This compute requires that atoms store a radius and angular velocity
-(omega) as defined by the <span class="xref std std-doc">atom_style spherharm</span> command.</p>
+<p>This fix requires that atoms store torque, angular velocity (omega), a
+radius, and a quaternion as defined by the <span class="xref std std-doc">atom_style spherharm</span> command.</p>
+<p>All particles in the group must be finite-size particles with
+quaternions.  They cannot be point particles.</p>
 </section>
 <section id="related-commands">
 <h2>Related commands<a class="headerlink" href="#related-commands" title="Permalink to this heading">¶</a></h2>
-<p><span class="xref std std-doc">compute erotate/asphere</span></p>
+<p><span class="xref std std-doc">fix nve</span>, <span class="xref std std-doc">fix nve/bpm/sphere</span></p>
 </section>
 <section id="default">
 <h2>Default<a class="headerlink" href="#default" title="Permalink to this heading">¶</a></h2>
@@ -151,8 +159,8 @@ scalar value will be in energy <span class="xref std std-doc">units</span>.</p>
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="atom_style_spherharm.html" class="btn btn-neutral float-left" title="atom_style spherharm command" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="compute_erotate_sphere.html" class="btn btn-neutral float-right" title="compute erotate/spherharm command" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="3_implementation.html" class="btn btn-neutral float-left" title="Implementation of SPHERHARM in LAMMPS" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="compute_efunction_sphere.html" class="btn btn-neutral float-right" title="compute efunction/spherharm command" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
