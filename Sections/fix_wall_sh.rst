@@ -1,6 +1,6 @@
-.. index:: fix wall/gran
+.. index:: fix wall/sh
 
-fix wall/gran command
+fix wall/sh command
 =====================
 
 Syntax
@@ -8,7 +8,7 @@ Syntax
 
 .. parsed-literal::
 
-   fix ID group-ID wall/gran fstyle fstyle_params wallstyle args keyword values ...
+   fix ID group-ID wall/sh fstyle fstyle_params wallstyle args keyword values ...
 
 * ID, group-ID are documented in :doc:`fix <fix>` command
 * wall/gran = style name of this fix command
