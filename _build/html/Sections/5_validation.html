@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SPHERHARM Theory &mdash; SPHERHARM documentation</title>
+  <title>Validation tests &mdash; SPHERHARM documentation</title>
       <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="../_static/css/lammps.css" type="text/css" />
@@ -25,8 +25,7 @@
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Implementation of SPHERHARM in LAMMPS" href="3_implementation.html" />
-    <link rel="prev" title="Getting Started" href="1_getting_started.html" /> 
+    <link rel="prev" title="fix nvt/sh command" href="4_fix_nvt_sh.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -50,9 +49,13 @@
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="1_getting_started.html">Getting Started</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">SPHERHARM Theory</a></li>
+<li class="toctree-l1"><a class="reference internal" href="2_introduction.html">SPHERHARM Theory</a></li>
 <li class="toctree-l1"><a class="reference internal" href="3_implementation.html">Implementation of SPHERHARM in LAMMPS</a></li>
 <li class="toctree-l1"><a class="reference internal" href="4_fix_nvt_sh.html">fix nvt/sh command</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Validation tests</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#energy-conservation-test">Energy conservation test</a></li>
+</ul>
+</li>
 </ul>
 
         </div>
@@ -69,47 +72,103 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
-      <li>SPHERHARM Theory</li>
+      <li>Validation tests</li>
       <li class="wy-breadcrumbs-aside">
-            <a href="../_sources/Sections/2_introduction.rst.txt" rel="nofollow"> View page source</a>
+            <a href="../_sources/Sections/5_validation.rst.txt" rel="nofollow"> View page source</a>
           <a href="https://github.com/imaranresearch/LAMMPS-SPHERHARM/tree/develop">Website</a>
           <!--   <a href="Commands_all.html">Commands</a> -->
       </li>
   </ul><div class="rst-breadcrumbs-buttons" role="navigation" aria-label="Sequential page navigation">
-        <a href="1_getting_started.html" class="btn btn-neutral float-left" title="Getting Started" accesskey="p"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="3_implementation.html" class="btn btn-neutral float-right" title="Implementation of SPHERHARM in LAMMPS" accesskey="n">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="4_fix_nvt_sh.html" class="btn btn-neutral float-left" title="fix nvt/sh command" accesskey="p"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
   </div>
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="spherharm-theory">
-<h1>SPHERHARM Theory<a class="headerlink" href="#spherharm-theory" title="Permalink to this heading">¶</a></h1>
-<p>Spherical harmonics can be used to represent a  closed star-like i.e., any line segment drawn from an origin, O, inside the particle crosses the  contour of the particle’s only once  three-dimensional surface <span id="id1"></span>. This is achieved using both the spherical harmonic functions <span class="math notranslate nohighlight">\(Y_n^m(\theta,\phi)\)</span> and the spherical harmonic coefficients <span class="math notranslate nohighlight">\(a_{nm}\)</span>:</p>
+  <section id="validation-tests">
+<h1>Validation tests<a class="headerlink" href="#validation-tests" title="Permalink to this heading">¶</a></h1>
+<section id="energy-conservation-test">
+<h2>Energy conservation test<a class="headerlink" href="#energy-conservation-test" title="Permalink to this heading">¶</a></h2>
+<p>The elastic collision between two irregularly shaped particles is used as the first benchmark test to verify and demonstrate the energy conservation of the spherical-harmonic-based contact detection algorithm and the volume-based energy-conserving contact model.  Two identical and randomly oriented particles are generated with the spherical harmonic degree of expansion of $N=10$. Initially, these particles with equal and opposite velocities are separated by a smaller distance.</p>
+<div class="highlight-LAMMPS notranslate"><div class="highlight"><pre><span></span># Test
+
+variable    name string spherical_harmonics_testing
+
+atom_style  spherharm 1     120 A-anm-00001.dat
+units               si
+newton off
+# newton on
+
+###############################################
+# Geometry-related parameters
+###############################################
+
+variable    boxx equal 100
+variable    boxy equal 100
+variable    boxz equal 100
+
+
+#############
+processors * * 1
+region              boxreg block 0 ${boxx} 0 ${boxy} 0 ${boxz}
+create_box  2 boxreg
+change_box  all boundary f f f
+
+create_atoms        1 single 35.5 50.0 50.0
+create_atoms        2 single 52.5 50.0 50.0
+
+#mass *      1.0
+
+set                 atom 1 vx 1.0 vy 0.0 vz 0.0
+set                 atom 2 vx -1.0 vy 0.0 vz 0.0
+
+set         atom 1 sh/shape 1
+set         atom 2 sh/shape 1
+set         group all sh/quat/random 4
+
+fix         time_fix all nve/sh
+
+neigh_modify        delay 0 every 1 check yes
+comm_modify vel yes
+
+thermo 1
+
+compute TransKE all ke
+compute RotKE all erotate/spherharm
+compute PEcalc all efunction/spherharm
+variable ETotal equal &quot;c_PEcalc + c_TransKE + c_RotKE&quot;
+variable ERot equal &quot;C_RotKE&quot;
+thermo_style custom step c_PEcalc c_TransKE c_RotKE v_ETotal
+
+pair_style  spherharm
+pair_coeff  * * 5.0e-6 2.0   30
+
+timestep    1.0e-3
+variable    step equal step
+#fix     1 all ave/time 100 1 100 c_PEcalc c_TransKE c_RotKE v_ETotal  file energy_spher.dat
+#fix                2 all print 1 &quot;${step} ${ETotal}&quot; file energy_spher.dat screen no
+run         1000
+</pre></div>
+</div>
+<p>The normal stiffness coefficient <span class="math notranslate nohighlight">\(k_n\)</span> is fixed to allow a large overlap. Fig. 1 displays the total energy of the system over time, where the contact work done is the sum of the incremental contact work done:</p>
 <div class="math notranslate nohighlight">
-\[r(\theta,\phi) = \sum_{n=0}^\infty\sum_{m=-n}^n a_{nm} Y_n^m(\theta, \phi) \approx r(N,\theta,\phi) = \sum_{n=0}^N\sum_{m=-n}^n a_{nm} Y_n^m(\theta, \phi)\]</div>
-<p>where <span class="math notranslate nohighlight">\(r(\theta,\phi)\)</span> is any smooth function defined on the unit sphere with <span class="math notranslate nohighlight">\(0\le\theta\le\pi\)</span> and <span class="math notranslate nohighlight">\(0\le\phi\le 2\pi\)</span>
-<span id="id2"></span>.</p>
-<p>In this case, <span class="math notranslate nohighlight">\(r(\theta,\phi)\)</span> describes the particle radius which is measured from its centre of mass. In practice, the above is approximated by truncating the initial sum from infinity to <span class="math notranslate nohighlight">\(\theta\)</span>. Spherical harmonic function, <span class="math notranslate nohighlight">\(Y_n^m\)</span> of a degree <span class="math notranslate nohighlight">\(n\)</span> and order <span class="math notranslate nohighlight">\(m\)</span> is given as</p>
-<div class="math notranslate nohighlight">
-\[Y_n^m(\theta, \phi) = \sqrt{\frac{(2n+1)(n-m)!}{4\pi(n+m)!}}P_n^m(\cos(\theta))e^{im\phi}\]</div>
-<p>where <span class="math notranslate nohighlight">\(P_n^m(x)\)</span> is the associated Legendre function, which can be calculated efficiently through the recurrence relations described by Press et al.&#64;~cite{Press2007}.</p>
-<p>Garboczi details how the coefficients <span class="math notranslate nohighlight">\(a_{nm}\)</span> can be extracted from a real particle using X-ray tomography and selecting radius measurement points that correspond with point of Gaussian quadrature such that
-can be solved, where the asterisk in the above denotes the complex conjugate  <span id="id3"></span>.</p>
-<div class="math notranslate nohighlight">
-\[a_{nm} = \int_0^{2\pi}\int_0^\pi  d\phi d\theta \sin(\theta) r(\theta, \phi) Y_n^m(\theta, \phi)^*\]</div>
-<a class="reference internal image-reference" href="../_images/N_0.png"><img alt="N =0" src="../_images/N_0.png" style="width: 30%;" /></a>
-<a class="reference internal image-reference" href="../_images/N_15.png"><img alt="N = 15" src="../_images/N_15.png" style="width: 30%;" /></a>
-<a class="reference internal image-reference" href="../_images/N_25.png"><img alt="N = 25" src="../_images/N_25.png" style="width: 30%;" /></a>
+\[d W = -d t ({F}\cdot {v}+ {M}\cdot {\omega})\]</div>
+<figure class="align-center" id="id1">
+<a class="reference internal image-reference" href="../_images/Energy_balance_elastic_impact.png"><img alt="../_images/Energy_balance_elastic_impact.png" src="../_images/Energy_balance_elastic_impact.png" style="width: 40%;" /></a>
+<figcaption>
+<p><span class="caption-text">Plot of energy (total, translational, rotational, and contact work) over time for an impact and excessive overlap of two particles</span><a class="headerlink" href="#id1" title="Permalink to this image">¶</a></p>
+</figcaption>
+</figure>
+<p>Absfsifdoa</p>
+</section>
 </section>
 
 
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="1_getting_started.html" class="btn btn-neutral float-left" title="Getting Started" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="3_implementation.html" class="btn btn-neutral float-right" title="Implementation of SPHERHARM in LAMMPS" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="4_fix_nvt_sh.html" class="btn btn-neutral float-left" title="fix nvt/sh command" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
     </div>
 
   <hr/>
