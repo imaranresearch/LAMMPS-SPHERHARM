@@ -1,6 +1,6 @@
-.. index:: fix nve/sh
+.. index:: fix nve/bpm/sphere
 
-fix nve/sh
+fix nve/bpm/sphere command
 ==========================
 
 Syntax
@@ -8,10 +8,10 @@ Syntax
 
 .. parsed-literal::
 
-   fix ID group-ID nve/sh
+   fix ID group-ID nve/bpm/sphere
 
 * ID, group-ID are documented in :doc:`fix <fix>` command
-* nve/sh = style name of this fix command
+* nve/bpm/sphere = style name of this fix command
 * zero or more keyword/value pairs may be appended
 * keyword = *disc*
 
@@ -24,22 +24,30 @@ Examples
 
 .. code-block:: LAMMPS
 
-   fix 1 all nve/sh
+   fix 1 all nve/bpm/sphere
+   fix 1 all nve/bpm/sphere disc
 
 Description
 """""""""""
 
 Perform constant NVE integration to update position, velocity, angular
-velocity, and quaternion orientation for spherical harmonic 
+velocity, and quaternion orientation for finite-size spherical
 particles in the group each timestep.  V is volume; E is energy.  This
 creates a system trajectory consistent with the microcanonical
 ensemble.
 
 This fix differs from the :doc:`fix nve <fix_nve>` command, which
 assumes point particles and only updates their position and velocity.
-It also differs from the :doc:`fix nve/bpm/sphere <fix_nve_bpm_sphere>`
-command which assumes only finite-size spherical particles.
+It also differs from the :doc:`fix nve/sphere <fix_nve_sphere>`
+command which assumes finite-size spheroid particles which do not
+store a quaternion.  It thus does not update a particle's orientation
+or quaternion.
 
+If the *disc* keyword is used, then each particle is treated as a 2d
+disc (circle) instead of as a sphere.  This is only possible for 2d
+simulations, as defined by the :doc:`dimension <dimension>` keyword.
+The only difference between discs and spheres in this context is their
+moment of inertia, as used in the time integration.
 
 ----------
 
@@ -58,16 +66,19 @@ Restrictions
 """"""""""""
 
 This fix requires that atoms store torque, angular velocity (omega), a
-radius, and a quaternion as defined by the :doc:`atom_style spherharm
+radius, and a quaternion as defined by the :doc:`atom_style bpm/sphere
 <atom_style>` command.
 
-All particles in the group must be finite-size particles with
+All particles in the group must be finite-size spheres with
 quaternions.  They cannot be point particles.
+
+Use of the *disc* keyword is only allowed for 2d simulations, as
+defined by the :doc:`dimension <dimension>` keyword.
 
 Related commands
 """"""""""""""""
 
-:doc:`fix nve <fix_nve>`, :doc:`fix nve/bpm/sphere <fix_nve_bpm_sphere>`
+:doc:`fix nve <fix_nve>`, :doc:`fix nve/sphere <fix_nve_sphere>`
 
 Default
 """""""
