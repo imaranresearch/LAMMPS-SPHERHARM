@@ -12,12 +12,6 @@ Syntax
 
 * ID, group-ID are documented in :doc:`fix <fix>` command
 * nve/sh = style name of this fix command
-* zero or more keyword/value pairs may be appended
-* keyword = *disc*
-
-  .. parsed-literal::
-
-       *disc* value = none = treat particles as 2d discs, not spheres
 
 Examples
 """"""""
