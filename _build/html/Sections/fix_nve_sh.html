@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>fix nve/sh &mdash; SPHERHARM documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/lammps.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/sphinx_highlight.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="fix wall/sh command" href="fix_wall_sh.html" />
+    <link rel="prev" title="compute erotate/spherharm command" href="compute_erotate_sphere.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html">
+            <img src="../_static/logo.png" class="logo" alt="Logo"/>
+          </a>
+              <div class="lammps_version">Version: <b></b></div>
+              <div class="lammps_release">git info: 0.1</div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="1_getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="2_introduction.html">SPHERHARM Theory</a></li>
+<li class="toctree-l1"><a class="reference internal" href="3_implementation.html">Implementation of SPHERHARM in LAMMPS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="atom_style_spherharm.html">atom_style spherharm command</a></li>
+<li class="toctree-l1"><a class="reference internal" href="compute_efunction_sphere.html">compute efunction/spherharm command</a></li>
+<li class="toctree-l1"><a class="reference internal" href="compute_erotate_sphere.html">compute erotate/spherharm command</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">fix nve/sh</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#syntax">Syntax</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#examples">Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#description">Description</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#restart-fix-modify-output-run-start-stop-minimize-info">Restart, fix_modify, output, run start/stop, minimize info</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#restrictions">Restrictions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#related-commands">Related commands</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#default">Default</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="fix_wall_sh.html">fix wall/sh command</a></li>
+<li class="toctree-l1"><a class="reference internal" href="pair_spherharm.html">pair_style spherharm command</a></li>
+<li class="toctree-l1"><a class="reference internal" href="validation.html">Validation tests</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">The implementation of DEM using Spherical Harmonic  in LAMMPS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>fix nve/sh</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/Sections/fix_nve_sh.rst.txt" rel="nofollow"> View page source</a>
+          <a href="https://github.com/imaranresearch/LAMMPS-SPHERHARM/tree/develop">Website</a>
+          <!--   <a href="Commands_all.html">Commands</a> -->
+      </li>
+  </ul><div class="rst-breadcrumbs-buttons" role="navigation" aria-label="Sequential page navigation">
+        <a href="compute_erotate_sphere.html" class="btn btn-neutral float-left" title="compute erotate/spherharm command" accesskey="p"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="fix_wall_sh.html" class="btn btn-neutral float-right" title="fix wall/sh command" accesskey="n">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+  </div>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="fix-nve-sh">
+<span id="index-0"></span><h1>fix nve/sh<a class="headerlink" href="#fix-nve-sh" title="Permalink to this heading">¶</a></h1>
+<section id="syntax">
+<h2>Syntax<a class="headerlink" href="#syntax" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">fix</span> <span class="n">ID</span> <span class="n">group</span><span class="o">-</span><span class="n">ID</span> <span class="n">nve</span><span class="o">/</span><span class="n">sh</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>ID, group-ID are documented in <span class="xref std std-doc">fix</span> command</p></li>
+<li><p>nve/sh = style name of this fix command</p></li>
+</ul>
+</section>
+<section id="examples">
+<h2>Examples<a class="headerlink" href="#examples" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-LAMMPS notranslate"><div class="highlight"><pre><span></span>fix 1 all nve/sh
+</pre></div>
+</div>
+</section>
+<section id="description">
+<h2>Description<a class="headerlink" href="#description" title="Permalink to this heading">¶</a></h2>
+<p>Perform constant NVE integration to update position, velocity, angular
+velocity, and quaternion orientation for spherical harmonic
+particles in the group each timestep.  V is volume; E is energy.  This
+creates a system trajectory consistent with the microcanonical
+ensemble.</p>
+<p>This fix differs from the <span class="xref std std-doc">fix nve</span> command, which
+assumes point particles and only updates their position and velocity.
+It also differs from the <span class="xref std std-doc">fix nve/bpm/sphere</span>
+command which assumes only finite-size spherical particles.</p>
+</section>
+<hr class="docutils" />
+<section id="restart-fix-modify-output-run-start-stop-minimize-info">
+<h2>Restart, fix_modify, output, run start/stop, minimize info<a class="headerlink" href="#restart-fix-modify-output-run-start-stop-minimize-info" title="Permalink to this heading">¶</a></h2>
+<p>No information about this fix is written to <span class="xref std std-doc">binary restart files</span>.  None of the <span class="xref std std-doc">fix_modify</span> options are
+relevant to this fix.  No global or per-atom quantities are stored by
+this fix for access by various <span class="xref std std-doc">output commands</span>.
+No parameter of this fix can be used with the <em>start/stop</em> keywords of
+the <span class="xref std std-doc">run</span> command.  This fix is not invoked during
+<span class="xref std std-doc">energy minimization</span>.</p>
+</section>
+<section id="restrictions">
+<h2>Restrictions<a class="headerlink" href="#restrictions" title="Permalink to this heading">¶</a></h2>
+<p>This fix requires that atoms store torque, angular velocity (omega), a
+radius, and a quaternion as defined by the <span class="xref std std-doc">atom_style spherharm</span> command.</p>
+<p>All particles in the group must be finite-size particles with
+quaternions.  They cannot be point particles.</p>
+</section>
+<section id="related-commands">
+<h2>Related commands<a class="headerlink" href="#related-commands" title="Permalink to this heading">¶</a></h2>
+<p><span class="xref std std-doc">fix nve</span>, <span class="xref std std-doc">fix nve/bpm/sphere</span></p>
+</section>
+<section id="default">
+<h2>Default<a class="headerlink" href="#default" title="Permalink to this heading">¶</a></h2>
+<p>none</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="compute_erotate_sphere.html" class="btn btn-neutral float-left" title="compute erotate/spherharm command" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="fix_wall_sh.html" class="btn btn-neutral float-right" title="fix wall/sh command" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Mohammad Imaran.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(false);
+      });
+  </script> 
+
+</body>
+</html>
