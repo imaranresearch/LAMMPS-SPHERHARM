@@ -21,6 +21,7 @@
         <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
         <script src="../_static/doctools.js"></script>
         <script src="../_static/sphinx_highlight.js"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -120,12 +121,12 @@
 <h2>Description<a class="headerlink" href="#description" title="Permalink to this heading">¶</a></h2>
 <p>Define a computation that calculates the potential energy of
 a group of spherical harmonic particles.</p>
-<p>The rotational energy is computed as 1/2 I w^2, where I is the moment
-of inertia for a sphere and w is the particle’s angular velocity.</p>
+<p>The work done by the potential over a time step is a combination of that done from the “back half” <span class="math notranslate nohighlight">\(t -&gt; t+dt/2\)</span> and the “front half” <span class="math notranslate nohighlight">\(t+dt/2-&gt;t+dt\)</span> of the time step. At the end of the time step, i.e <span class="math notranslate nohighlight">\(t+dt\)</span>, it is not possible to calculate the “back half” of the work done, so this must be carried forward from the previous time step.
+These compute styles calculate global scalars and can be used by other commands that use a global scalar value from a compute as input.</p>
 </section>
 <section id="output-info">
 <h2>Output info<a class="headerlink" href="#output-info" title="Permalink to this heading">¶</a></h2>
-<p>This compute calculates a global scalar (the KE).  This value can be
+<p>This compute calculates a global scalar (the PE).  This value can be
 used by any command that uses a global scalar value from a compute as
 input.  See the <span class="xref std std-doc">Howto output</span> page for an
 overview of LAMMPS output options.</p>
@@ -139,7 +140,7 @@ scalar value will be in energy <span class="xref std std-doc">units</span>.</p>
 </section>
 <section id="related-commands">
 <h2>Related commands<a class="headerlink" href="#related-commands" title="Permalink to this heading">¶</a></h2>
-<p><span class="xref std std-doc">compute erotate/asphere</span></p>
+<p><span class="xref std std-doc">compute erotate/spherharm</span></p>
 </section>
 <section id="default">
 <h2>Default<a class="headerlink" href="#default" title="Permalink to this heading">¶</a></h2>
