@@ -75,7 +75,7 @@ class PairSH : public Pair {
   double cur_time;
   int file_count;
   int write_surfpoints_to_file(double *x, bool append_file, int cont, int ifnorm, double *norm) const;
-
+  int write_vol_overlap_to_file(int, int, double, bool);
   // Gaussian quadrature arrays
   double *abscissa{};          // Abscissa of gaussian quadrature (same for all shapes)
   double *weights{};           // Weights of gaussian quadrature (same for all shapes)

@@ -17,6 +17,7 @@
 ------------------------------------------------------------------------- */
 /* ------------------------------------------------------------------------
    Contributing authors: James Young (UoE)
+                         Mohammad Imaran (UoE)
                          Kevin Hanley (UoE)
 
    Please cite the related publication:
@@ -62,13 +63,13 @@ enum{NONE,CONSTANT,EQUAL};
 FixWallSpherharm::FixWallSpherharm(LAMMPS *lmp, int narg, char **arg) :
         Fix(lmp, narg, arg), idregion(nullptr)
 {
-  if (narg < 7) error->all(FLERR,"Illegal fix wall/spherharm command");
+  if (narg < 8) error->all(FLERR,"Illegal fix wall/spherharm command");
 
   if (!atom->spherharm_flag)
     error->all(FLERR,"Fix wall/spherharm requires atom style spherharm");
 
   //TODO - hardcoding the number of quadrature points is not a good idea here
-  num_pole_quad = 40;
+  // num_pole_quad = 40;
   create_attribute = 1;
   restart_peratom = 0;
 
@@ -80,14 +81,15 @@ FixWallSpherharm::FixWallSpherharm(LAMMPS *lmp, int narg, char **arg) :
 
   kn = utils::numeric(FLERR, arg[3], false, lmp);
   mexpon = utils::numeric(FLERR, arg[4], false, lmp);
+  num_pole_quad = utils::numeric(FLERR, arg[5], false, lmp);
   tang = true;
-  if (strcmp(arg[5],"NULL") == 0) tang = false;
+  if (strcmp(arg[6],"NULL") == 0) tang = false;
   else tangcoeff = utils::numeric(FLERR, arg[5], false, lmp);
 
   if (kn < 0.0 || mexpon < 1.0 || tangcoeff < 0.0)
     error->all(FLERR, "Illegal fix wall/gran command");
 
-  iarg = 6;
+  iarg = 7;
 
   // wallstyle args
 
@@ -136,7 +138,9 @@ FixWallSpherharm::FixWallSpherharm(LAMMPS *lmp, int narg, char **arg) :
 
   wiggle = 0;
   wshear = 0;
+  wtranslate = 0;
   peratom_flag = 0;
+  vwall[0] = vwall[1] = vwall[2] = 0.0;
 
   while (iarg < narg) {
     if (strcmp(arg[iarg],"wiggle") == 0) {
@@ -158,7 +162,13 @@ FixWallSpherharm::FixWallSpherharm(LAMMPS *lmp, int narg, char **arg) :
       vshear = utils::numeric(FLERR,arg[iarg+2],false,lmp);
       wshear = 1;
       iarg += 3;
-    } else if (strcmp(arg[iarg],"contacts") == 0) {
+    } else if (strcmp(arg[iarg],"translate") == 0) {
+      wtranslate = 1;
+      vwall[0] = utils::numeric(FLERR,arg[iarg+1],false,lmp);
+      vwall[1] = utils::numeric(FLERR,arg[iarg+2],false,lmp);
+      vwall[2] = utils::numeric(FLERR,arg[iarg+3],false,lmp);
+      iarg += 4;
+    }else if (strcmp(arg[iarg],"contacts") == 0) {
       peratom_flag = 1;
       size_peratom_cols = 8;
       peratom_freq = 1;
@@ -187,6 +197,13 @@ FixWallSpherharm::FixWallSpherharm(LAMMPS *lmp, int narg, char **arg) :
     error->all(FLERR,"Invalid shear direction for fix wall/gran");
   if ((wiggle || wshear) && wallstyle == REGION)
     error->all(FLERR,"Cannot wiggle or shear with fix wall/gran/region");
+  
+  //if ((wtranslate || wscontrol) && (lo != -BIG && hi != BIG)) // added wscontrol [MO - 28 Aug 2015]
+   // error->all(FLERR,"Cannot specify both top and bottom walls and translate for fix wall/gran/oldstyle");
+  if (wtranslate && wallstyle == ZCYLINDER) // added wscontrol [MO - 28 Aug 2015]
+    error->all(FLERR,"Cannot use translate with cylinder fix wall/gran/oldstyle");
+  if (wtranslate && (wiggle || wshear)) // added wscontrol [MO - 28 Aug 2015]
+    error->all(FLERR,"Cannot translate and wiggle or shear fix wall/gran/oldstyle");
 
   // setup oscillations
 
@@ -239,7 +256,7 @@ void FixWallSpherharm::init()
   dt = update->dt;
 
   avec = (AtomVecSpherharm *) atom->style_match("spherharm");
-  if (!avec) error->all(FLERR,"Pair SH requires atom style shperatom");
+  if (!avec) error->all(FLERR,"Pair SH requires atom style spherharm");
 
   get_quadrature_values(num_pole_quad);
 }
@@ -273,7 +290,8 @@ void FixWallSpherharm::post_force(int /*vflag*/)
       whi = hi + amplitude - amplitude*cos(arg);
     }
     vwall[axis] = amplitude*omega*sin(arg); // only works for axis=2 for zcylinder
-  } else if (wshear) vwall[axis] = vshear; // for cylinder, this means cylinder is travelling along axis
+  } else if (wtranslate) move_wall(); // move_wall will update hi & lo
+  else if (wshear) vwall[axis] = vshear; // for cylinder, this means cylinder is travelling along axis
 
   // loop over all my atoms
   // rsq = distance from wall
@@ -460,7 +478,7 @@ void FixWallSpherharm::vol_based(double dx, double dy, double dz, double iang,
     calc_force_torque(wall_type, ishtype, iang, iquat_cont, iquat_sf_bf, x,
                       irot,vol_overlap, iforce, torsum, delvec);
 
-    std::cout << "Vol " << vol_overlap << std::endl;
+    //std::cout << "Vol " << vol_overlap << std::endl;
 
     if (vol_overlap==0.0) return;
 
@@ -470,7 +488,7 @@ void FixWallSpherharm::vol_based(double dx, double dy, double dz, double iang,
     MathExtra::add3(f, iforce, f);           // Force and torque on particle a
     MathExtra::add3(torque, torsum, torque);
 
-    std::cout << "fn  " << iforce[0] << " " << iforce[1] << " "<< iforce[2] << " " << std::endl;
+    //std::cout << "fn  " << iforce[0] << " " << iforce[1] << " "<< iforce[2] << " " << std::endl;
 
     if (tang){ // Tangential component
       // This only works for a particle interacting with a flat plane. Need to modify for the interaction with a cylinder
@@ -488,12 +506,12 @@ void FixWallSpherharm::vol_based(double dx, double dy, double dz, double iang,
         MathExtra::sub3(vwall, v, vr); //vr = vj - vi
       }
       else if (wall_type==1){
-        std::cout << "LO "<< line_origin[0] << " "<< line_origin[1] << " "<< line_origin[2] << std::endl;
-        std::cout << "LN "<< linenorm[0] << " "<< linenorm[1] << " "<< linenorm[2] << std::endl;
+       // std::cout << "LO "<< line_origin[0] << " "<< line_origin[1] << " "<< line_origin[2] << std::endl;
+        //std::cout << "LN "<< linenorm[0] << " "<< linenorm[1] << " "<< linenorm[2] << std::endl;
         if (MathSpherharm::get_contact_point_cylinder(maxrad[ishtype], x, linenorm, line_origin, cp, cylradius, inside)){
           error->all(FLERR, "Error, Contact line does not intersect with bounding sphere or cylinder boundary");
         }
-        std::cout << "CP "<< cp[0] << " "<< cp[1] << " "<< cp[2] << std::endl;
+        //std::cout << "CP "<< cp[0] << " "<< cp[1] << " "<< cp[2] << std::endl;
         vr[0] = -v[0]; // for cylinder this is [-v1, -v2, vw3-v3], cyl can only have z velocity
         vr[1] = -v[1];
         vr[2] = vwall[2]-v[2];
@@ -503,8 +521,8 @@ void FixWallSpherharm::vol_based(double dx, double dy, double dz, double iang,
       MathExtra::add3(f, tforce, f);
       MathExtra::add3(torque, ttorque, torque);
 
-      std::cout << "Force  " << tforce[0] << " " << tforce[1] << " "<< tforce[2] << " " << std::endl;
-      std::cout << "Torque " << ttorque[0] << " " << ttorque[1] << " "<< ttorque[2] << " " << std::endl << std::endl;
+      //std::cout << "Force  " << tforce[0] << " " << tforce[1] << " "<< tforce[2] << " " << std::endl;
+     // std::cout << "Torque " << ttorque[0] << " " << ttorque[1] << " "<< ttorque[2] << " " << std::endl << std::endl;
     }
 
     if (peratom_flag) {
@@ -514,14 +532,14 @@ void FixWallSpherharm::vol_based(double dx, double dy, double dz, double iang,
     }
 
     static int file_count = 0;
-    avec->dump_ply(0,ishtype,file_count,irot,x);
+//    avec->dump_ply(0,ishtype,file_count,irot,x);
     file_count++;
 
   }
 
   //std::cout.precision(std::numeric_limits<double>::digits10);
-  std::cout<<f[0]<<" "<<f[1]<<" "<<f[2]<<" "<<std::endl;
-  std::cout<<torque[0]<<" "<<torque[1]<<" "<<torque[2]<<" "<<std::endl;
+//  std::cout<<f[0]<<" "<<f[1]<<" "<<f[2]<<" "<<std::endl;
+ // std::cout<<torque[0]<<" "<<torque[1]<<" "<<torque[2]<<" "<<std::endl;
 
 }
 
@@ -713,9 +731,9 @@ void FixWallSpherharm::calc_force_torque(const int wall_type, int ishtype, doubl
   MathExtra::qnormalize(quat);
   MathExtra::quat_to_mat(quat, rot_np_bf);
 
-  std::cout << rot_np_sf[0][0] << " " << rot_np_sf[0][1] << " " << rot_np_sf[0][2] << std::endl;
-  std::cout << rot_np_sf[1][0] << " " << rot_np_sf[1][1] << " " << rot_np_sf[1][2] << std::endl;
-  std::cout << rot_np_sf[2][0] << " " << rot_np_sf[2][1] << " " << rot_np_sf[2][2] << std::endl;
+//  std::cout << rot_np_sf[0][0] << " " << rot_np_sf[0][1] << " " << rot_np_sf[0][2] << std::endl;
+  //std::cout << rot_np_sf[1][0] << " " << rot_np_sf[1][1] << " " << rot_np_sf[1][2] << std::endl;
+  //std::cout << rot_np_sf[2][0] << " " << rot_np_sf[2][1] << " " << rot_np_sf[2][2] << std::endl;
 
   const int n = 2*(num_pole_quad-1);
   const int n4 = int(std::ceil(double(n)/4.0));
@@ -773,7 +791,7 @@ void FixWallSpherharm::calc_force_torque(const int wall_type, int ishtype, doubl
         double zero_norm[3];
         MathExtra::zero3(zero_norm);
         if (file_count % 1 == 0) {
-          write_surfpoints_to_file(ix_sf, false, inorm_sf, file_count, first_call);
+          //write_surfpoints_to_file(ix_sf, false, inorm_sf, file_count, first_call);
           if ((first_call)) first_call = false;
         }
         ///////////
@@ -955,7 +973,7 @@ void FixWallSpherharm::calc_velCoulomb_force_torque(int ishtype, double const (&
   MathExtra::sub3(vt, rwn, vtr);
   MathExtra::norm3(vtr);
 
-  std::cout << std::endl << "t " << vtr[0] << " " << vtr[1] << " " << vtr[2] << std::endl<< std::endl;
+  //std::cout << std::endl << "t " << vtr[0] << " " << vtr[1] << " " << vtr[2] << std::endl<< std::endl;
 
   tforce[0] = tangcoeff*fn*vtr[0]; // Tangential force
   tforce[1] = tangcoeff*fn*vtr[1];
@@ -969,3 +987,22 @@ void FixWallSpherharm::calc_velCoulomb_force_torque(int ishtype, double const (&
 
 }
 
+
+/* ---------------------------------------------------------------------- 
+  A function that implements wall movement
+------------------------------------------------------------------------- */
+// Adding wall movement -- function taken from gran/oldstyel - [MI - 24 October 2022]
+void FixWallSpherharm::move_wall() {
+  //~ Only update lo or hi if not NULL [KH - 27 November 2013]
+  // Upate w_boxlo & w_boxhi in Domain.cpp [MO -02 Sep 2015]
+  if (lo != -BIG) { 
+    lo+=vwall[wallstyle]*dt;
+    domain->w_boxlo[wallstyle] = lo;
+    //MPI_Bcast(&domain->w_boxlo[wallstyle],1,MPI_DOUBLE,0,world);
+  }
+  if (hi != BIG) {
+    hi+=vwall[wallstyle]*dt; 
+    domain->w_boxhi[wallstyle] = hi;
+    //MPI_Bcast(&domain->w_boxhi[wallstyle],1,MPI_DOUBLE,0,world);
+  }
+}

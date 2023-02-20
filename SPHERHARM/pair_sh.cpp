@@ -13,6 +13,7 @@
 
 /* ------------------------------------------------------------------------
    Contributing authors: James Young (UoE)
+                         Mohammad Imaran (UoE)
                          Kevin Hanley (UoE)
 
    Please cite the related publication:
@@ -68,8 +69,8 @@ PairSH::PairSH(LAMMPS *lmp) : Pair(lmp)
 
   // Todo make this an input to the pair style, i.e. let the user specify the order of quadrature if they wish
   // Todo The same could go for the radius tolerance...
-  num_pole_quad = 30;
-  radius_tol = 1e-8; // %, for very small overlaps this percentage tolerance must be very fine
+ // num_pole_quad = 100;
+  radius_tol = 1e-12; // %, for very small overlaps this percentage tolerance must be very fine
 }
 
 /* ---------------------------------------------------------------------- */
@@ -126,7 +127,6 @@ void PairSH::compute(int eflag, int vflag)
   maxshexpan = avec->get_max_expansion();
   file_count++;
   MPI_Comm_rank(world,&me);
-
   // loop over neighbors of my atoms
   for (ii = 0; ii < inum; ii++) {
     i = ilist[ii];
@@ -142,7 +142,7 @@ void PairSH::compute(int eflag, int vflag)
     // Quaternion to get from space frame to body frame for atom "i"
     MathExtra::qconjugate(quat[i], iquat_sf_bf);
     MathExtra::qnormalize(iquat_sf_bf);
-
+    // avec->dump_ply(i, ishtype, file_count, irot, x[i]);
     for (jj = 0; jj < jnum; jj++) {
       cont_calc = false;
       j = jlist[jj];
@@ -161,7 +161,7 @@ void PairSH::compute(int eflag, int vflag)
       MathExtra::zero3(iforce);
       MathExtra::zero3(torsum);
 
-          avec->dump_ply(i, ishtype, file_count, irot, x[i]);
+      // avec->dump_ply(i, ishtype, file_count, irot, x[i]);
       if (r<radi+radj) {
 
         if (r > radj) { // Particle i's centre is not inside Particle j, can use spherical cap from particle i
@@ -172,7 +172,12 @@ void PairSH::compute(int eflag, int vflag)
           iang = std::asin(r_i/radi);
 
         }
-          // TODO Add condition for particle "j" were the code will swap to particle "j" becoming the primary if "i" is not feasible
+        else if (r>radi){
+          double h = 0.5 + (radi * radj - radi * radi)/(2.0 * r*r);
+          double r_j = std::sqrt(radj*radj - h*h*r*r);
+          iang = std::asin(r_j/radj);
+        }
+          // T Add condition for particle "j" were the code will swap to particle "j" becoming the primary if "i" is not feasible
         else { // Can't use either spherical cap
           error->all(FLERR, "Error, centre within radius!");
         }
@@ -205,6 +210,11 @@ void PairSH::compute(int eflag, int vflag)
           if (maxshexpan!=0){
             calc_norm_force_torque(kk_count, ishtype, jshtype, iang, radi, radj, iquat_cont, iquat_sf_bf, x[i], x[j],
                                    irot,jrot, vol_overlap, iforce, torsum, factor, first_call, ii, jj);
+
+            // calc_tang_force_torque( mu,  ishtype,  jshtype, normforce, vr,omegaa,omegab, cp, rot_sf_bf_a, rot_sf_bf_b,
+                            //       tforce);
+
+          //write_vol_overlap_to_file(maxshexpan,file_count,vol_overlap,true);
           }
           else{ // simplified case of sphere-sphere overlap
             sphere_sphere_norm_force_torque(radi, radj, radi+radj-r, x[i], x[j], iforce, torsum, vol_overlap);
@@ -254,11 +264,11 @@ void PairSH::compute(int eflag, int vflag)
 
         // Useful code just for jumping ply files of the particles. This can be loaded by paraview
         
-        if (me==0) {
-          avec->dump_ply(i, ishtype, file_count, irot, x[i]);
-          avec->dump_ply(j, jshtype, file_count, jrot, x[j]);
+        //if (me==0) {
+         // avec->dump_ply(i, ishtype, file_count, irot, x[i]);
+         // avec->dump_ply(j, jshtype, file_count, jrot, x[j]);
 	 
-        }
+//        }
         
 
       /*
@@ -340,17 +350,19 @@ void PairSH::settings(int narg, char **arg) {
 void PairSH::coeff(int narg, char **arg)
 {
 
-  if (narg != 4)
+  if (narg != 5)
     error->all(FLERR,"Incorrect args for pair coefficients");
   if (!allocated) allocate();
 
   int ilo,ihi,jlo,jhi;
   double normal_coeffs_one, exponent_in;
+  int num_pole_quad_in;
   utils::bounds(FLERR,arg[0],1,atom->ntypes,ilo,ihi,error);
   utils::bounds(FLERR,arg[1],1,atom->ntypes,jlo,jhi,error);
   normal_coeffs_one = utils::numeric(FLERR,arg[2],false,lmp);// kn
   exponent_in = utils::numeric(FLERR,arg[3],false,lmp);// m
-
+  num_pole_quad_in = utils::numeric(FLERR,arg[4],false,lmp);// Adding num_pole_quad as user input in the script
+  num_pole_quad = num_pole_quad_in;
   if (exponent==-1){
     exponent=exponent_in;
   }
@@ -500,7 +512,8 @@ int PairSH::refine_cap_angle(int &kk_count, int ishtype, int jshtype, double ian
 
   for (kk = num_pole_quad-1; kk >= 0; kk--) { // start from widest angle to allow early stopping
     theta_pole = std::acos((abscissa[kk]*((1.0-cosang)/2.0)) + ((1.0+cosang)/2.0));
-    for (ll = 1; ll <= n+1; ll++) {
+    //std::cout<<"Check Angle"<<theta_pole<<std::endl;
+    for (ll = 1; ll <= n+1; ll+=5) {
       phi_pole = MY_2PI * double(ll-1) / (double(n + 1));
 
       gp[0] = std::sin(theta_pole)*std::cos(phi_pole); // quadrature point at [0,0,1]
@@ -656,18 +669,18 @@ void PairSH::calc_norm_force_torque(int kk_count, int ishtype, int jshtype, doub
         // Code below is useful if wanting to visualise the quadrature points which make up the surface containing
         // the volume of overlap
         ///////////
-        double zero_norm[3];
-        MathExtra::zero3(zero_norm);
-        if (file_count % 1 == 0) {
-          if ((first_call) & (ii == 0) & (jj == 0)) {
-            first_call = false;
-            write_surfpoints_to_file(ix_sf, false, 1, 1, inorm_sf);
-            //write_surfpoints_to_file(jx_sf, true, 0, 0, zero_norm);
-          } else if (ii == 0 & jj == 0) {
-            write_surfpoints_to_file(ix_sf, true, 1, 1, inorm_sf);
-	    //write_surfpoints_to_file(jx_sf, true, 0, 0, zero_norm);
-          }
-        }
+      //   double zero_norm[3];
+      //   MathExtra::zero3(zero_norm);
+      //   if (file_count % 1 == 0) {
+      //     if ((first_call) & (ii == 0) & (jj == 0)) {
+      //       first_call = false;
+      //       write_surfpoints_to_file(ix_sf, false, 1, 1, inorm_sf);
+      //       //write_surfpoints_to_file(jx_sf, true, 0, 0, zero_norm);
+      //     } else if (ii == 0 & jj == 0) {
+      //       write_surfpoints_to_file(ix_sf, true, 1, 1, inorm_sf);
+	    // //write_surfpoints_to_file(jx_sf, true, 0, 0, zero_norm);
+      //     }
+      //   }
         ///////////
 
       } // check_contact
@@ -838,6 +851,42 @@ double PairSH::find_intersection_by_bisection(double rad_body, double radtol, do
 
 
 /* ----------------------------------------------------------------------
+  Write the overlap volume in a file --- MI tesintg...
+
+  This method writes the overlap volume between the particles at different time steps.
+  files name is according to the number of quadrature points used for the interaction calculation.
+------------------------------------------------------------------------- */
+
+int PairSH:: write_vol_overlap_to_file( int maxshexpan,int file_count, double vol_overlap, bool append_file1)  {
+
+//cur_time += update->dt;
+  //int maxshexpan;
+  maxshexpan = avec->get_max_expansion();
+
+  std::ofstream outfile1;
+  if (append_file1){
+    outfile1.open("vol_overlap_N_"+std::to_string(maxshexpan)+"_m_"+std::to_string(num_pole_quad)+".dat", std::ios_base::app);
+    if (outfile1.is_open()) {
+      //outfile1 << "t     vol_overlap" << "\n";
+        outfile1 << std::setprecision(16) <<file_count << " " << vol_overlap << "\n";
+      outfile1.close();
+    } else std::cout << "Unable to open file";
+  }
+  else {
+//    cur_time += update->dt;
+    outfile1.open("vol_overlap_N_"+std::to_string(maxshexpan)+"_m_"+std::to_string(num_pole_quad)+".dat");
+    if (outfile1.is_open()) {
+      //outfile1 << "t     vol_overlap" << "\n";
+        outfile1 << std::setprecision(16) << file_count << " " << vol_overlap << "\n";
+      outfile1.close();
+    } else std::cout << "Unable to open file";
+  }
+  return 0;
+};
+
+
+
+/* ----------------------------------------------------------------------
     Find the intersection between two surfaces where the ray cast from the
     centre of particle "A" to it's surface with some fixed angle meets the
     ray cast from the centre of particle "B" to it's surface
@@ -893,7 +942,7 @@ double PairSH::find_intersection_by_newton(const double ix_sf[3], const double x
     cpct = cp*ct;
     spst = sp*st;
     spct = sp*ct;
-    cpst = cp*st;
+    cpst = cp*st; 
 
     // Get the radius and gradients for the current iteration of theta and theta.
     r = avec->get_shape_radius_and_gradients(sht, theta_n, phi_n, rp, rt);
