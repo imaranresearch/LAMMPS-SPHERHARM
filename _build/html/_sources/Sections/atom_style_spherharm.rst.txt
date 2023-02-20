@@ -23,16 +23,13 @@ Examples
 Description
 """""""""""
 
-Perform constant NVE integration to update position, velocity, angular
-velocity, and quaternion orientation for spherical harmonic 
-particles in the group each timestep.  V is volume; E is energy.  This
-creates a system trajectory consistent with the microcanonical
-ensemble.
+Atom style defines the set of properties of an atom used during a simulation in communication and input-output operations. Unlike traditional atom styles in LAMMPS, spherical harmonic particles are constructed in the simulation by supplying the shape coefficients. Any instance of this atom style accesses the appropriate coefficients. Spherical harmonic representation of the particles requires the multiple per-shape variables: shape coefficients :math:`a_{nm}`, principle inertia :math:`I_{1,2,3}`, initial quaternion :math:`q_i`, and degree of spherical harmonic expansion :math:`n`. Modified set commands further link these per-shape variables to per-atom or per-group properties.
 
-This fix differs from the :doc:`fix nve <fix_nve>` command, which
-assumes point particles and only updates their position and velocity.
-It also differs from the :doc:`fix nve/bpm/sphere <fix_nve_bpm_sphere>`
-command which assumes only finite-size spherical particles.
+
+.. note:: 
+   
+   It should be noted that  per-shape properties are not the same as the per-type properties. A spherical harmonic atom type can contain only one shape, although a shape can belong to multiple types of spherical harmonic particles.
+
 
 
 ----------
