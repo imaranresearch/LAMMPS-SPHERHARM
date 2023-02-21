@@ -8,10 +8,13 @@ Syntax
 
 .. parsed-literal::
 
-   atom_style spherharm N numerical_quad1 shape_coeff.dat
+   atom_style spherharm N nqp shape_coeff
 
-* ID, group-ID are documented in atom_style  command
 * spherharm = style name of this atom_style command
+* N = degree of Spherical Harmonic expansion
+* nqp = square root of quadrature points for calculating properties of a spherical harmonic particle
+* shape_coeff = file containing shape coefficients
+
 
 Examples
 """"""""

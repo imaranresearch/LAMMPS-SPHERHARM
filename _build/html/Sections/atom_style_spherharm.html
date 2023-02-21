@@ -102,12 +102,14 @@
 <span id="index-0"></span><h1>atom_style spherharm command<a class="headerlink" href="#atom-style-spherharm-command" title="Permalink to this heading">¶</a></h1>
 <section id="syntax">
 <h2>Syntax<a class="headerlink" href="#syntax" title="Permalink to this heading">¶</a></h2>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">atom_style</span> <span class="n">spherharm</span> <span class="n">N</span> <span class="n">numerical_quad1</span> <span class="n">shape_coeff</span><span class="o">.</span><span class="n">dat</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">atom_style</span> <span class="n">spherharm</span> <span class="n">N</span> <span class="n">nqp</span> <span class="n">shape_coeff</span>
 </pre></div>
 </div>
 <ul class="simple">
-<li><p>ID, group-ID are documented in atom_style  command</p></li>
 <li><p>spherharm = style name of this atom_style command</p></li>
+<li><p>N = degree of Spherical Harmonic expansion</p></li>
+<li><p>nqp = square root of quadrature points for calculating properties of a spherical harmonic particle</p></li>
+<li><p>shape_coeff = file containing shape coefficients</p></li>
 </ul>
 </section>
 <section id="examples">
