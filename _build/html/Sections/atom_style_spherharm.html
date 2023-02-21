@@ -56,7 +56,6 @@
 <li class="toctree-l2"><a class="reference internal" href="#syntax">Syntax</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#examples">Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#description">Description</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#restart-fix-modify-output-run-start-stop-minimize-info">Restart, fix_modify, output, run start/stop, minimize info</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#restrictions">Restrictions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#related-commands">Related commands</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#default">Default</a></li>
@@ -126,15 +125,6 @@
 </div>
 </section>
 <hr class="docutils" />
-<section id="restart-fix-modify-output-run-start-stop-minimize-info">
-<h2>Restart, fix_modify, output, run start/stop, minimize info<a class="headerlink" href="#restart-fix-modify-output-run-start-stop-minimize-info" title="Permalink to this heading">¶</a></h2>
-<p>No information about this fix is written to <span class="xref std std-doc">binary restart files</span>.  None of the <span class="xref std std-doc">fix_modify</span> options are
-relevant to this fix.  No global or per-atom quantities are stored by
-this fix for access by various <span class="xref std std-doc">output commands</span>.
-No parameter of this fix can be used with the <em>start/stop</em> keywords of
-the <span class="xref std std-doc">run</span> command.  This fix is not invoked during
-<span class="xref std std-doc">energy minimization</span>.</p>
-</section>
 <section id="restrictions">
 <h2>Restrictions<a class="headerlink" href="#restrictions" title="Permalink to this heading">¶</a></h2>
 <p>This fix requires that atoms store torque, angular velocity (omega), a
@@ -144,7 +134,7 @@ quaternions.  They cannot be point particles.</p>
 </section>
 <section id="related-commands">
 <h2>Related commands<a class="headerlink" href="#related-commands" title="Permalink to this heading">¶</a></h2>
-<p><span class="xref std std-doc">fix nve</span>, <span class="xref std std-doc">fix nve/bpm/sphere</span></p>
+<p><span class="xref std std-doc">read_data, pair_style</span></p>
 </section>
 <section id="default">
 <h2>Default<a class="headerlink" href="#default" title="Permalink to this heading">¶</a></h2>
