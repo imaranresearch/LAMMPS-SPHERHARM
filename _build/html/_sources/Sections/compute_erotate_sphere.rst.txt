@@ -27,7 +27,7 @@ Define a computation that calculates the rotational kinetic energy of
 a group of spherical harmonic particles.
 
 The rotational energy is computed as 1/2 I w\^2, where I is the moment
-of inertia for a sphere and w is the particle's angular velocity.
+of inertia for a spherical harmonic particle and w is the particle's angular velocity.
 
 
 Output info
