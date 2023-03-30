@@ -124,7 +124,6 @@ double ComputeEFunctionSpherharm::compute_scalar()
   temp *= pfactor;
   workstore += (long double)(temp + dw_back);
   scalar = double(workstore);
-  //std::cout<<"print"<<"\t"<<dw_back<<"\t"<<workstore<<"\t"<<temp<<"\t"<<pfactor<<std::endl;
   temp = 0.0;
   MPI_Allreduce(&efuture,&temp,1,MPI_DOUBLE,MPI_SUM,world);
   temp *= pfactor;

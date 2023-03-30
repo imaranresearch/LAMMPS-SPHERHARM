@@ -23,6 +23,7 @@ FixStyle(wall/spherharm,FixWallSpherharm)
 #include "math_extra.h"
 #include "fix.h"
 #include "math_spherharm.h"
+#include <functional>
 
 namespace LAMMPS_NS {
 
@@ -54,10 +55,12 @@ class FixWallSpherharm : public Fix {
   bigint time_origin;
   double kn,mexpon,tangcoeff;
   bool tang;
+  int wtranslate; // flag for wall movement
 
   double lo,hi,cylradius;
   double amplitude,period,omega,vshear;
   double dt;
+  double vwall[3];
   char *idregion;
 
   class AtomVecSpherharm *avec{};
@@ -104,7 +107,7 @@ class FixWallSpherharm : public Fix {
                           double &vol_overlap, double (&iforce)[3], double (&torsum)[3],
                           double delvec[3]);
 
-
+ void move_wall();
   // Gaussian quadrature arrays
   double *abscissa{};          // Abscissa of gaussian quadrature (same for all shapes)
   double *weights{};           // Weights of gaussian quadrature (same for all shapes)

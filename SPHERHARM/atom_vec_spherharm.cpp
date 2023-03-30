@@ -57,8 +57,6 @@ AtomVecSpherharm::AtomVecSpherharm(LAMMPS *lmp) : AtomVec(lmp)
   vol_byshape = nullptr;
   maxshexpan = -1;
 
-  // For print statements, not for production
-  verbose_out = true;
 
   mass_type = 0;    // not per-type mass arrays
   molecular = 0;    // 0 = atomic
@@ -146,10 +144,9 @@ void AtomVecSpherharm::process_args(int narg, char **arg)
   }
 
   if (me ==
-      0) {    // Only want the 0th processor to read in the coefficients, (will share with the others later)
+      0) {    // Only want the 0th processor to read in the coefficients
     for (int i = 2; i < narg;
          i++) {    // Can list a number of files storing coefficients, each will be read in turn
-      if (verbose_out) std::cout << arg[i] << std::endl;
       read_sh_coeffs(arg[i], i - 2);    // method for coefficient reading
     }
 
@@ -178,7 +175,6 @@ void AtomVecSpherharm::process_args(int narg, char **arg)
   MPI_Bcast(&(maxrad_byshape[0]), nshtypes, MPI_DOUBLE, 0, world);
   MPI_Bcast(&(vol_byshape[0]), nshtypes, MPI_DOUBLE, 0, world);
 
-  // delay setting up of fields until now
   setup_fields();
 }
 
@@ -225,7 +221,6 @@ void AtomVecSpherharm::create_atom_post(int ilocal)
 
 void AtomVecSpherharm::data_atom_post(int ilocal)
 {
-  // reading and writing for this atom style has not been considered yet
   omega[ilocal][0] = 0.0;
   omega[ilocal][1] = 0.0;
   omega[ilocal][2] = 0.0;
@@ -317,28 +312,6 @@ void AtomVecSpherharm::getI()
       }
     }
 
-    // // Just for testing, can be removed, used quadrature points rather than grid points
-    // //----------------------------------
-    // double vol2 = 0.0;
-    // double iang = MY_PI;
-    // int trap_L = 2 * (num_quadrature - 1);
-    // double abscissa[num_quadrature];
-    // QuadPair p;
-    // // Get the quadrature weights, and abscissa. Convert abscissa to theta angles
-    // for (int i = 0; i < num_quadrature; i++) {
-    //   p = GLPair(num_quadrature, i + 1);
-    //   abscissa[i] = p.x();
-    // }
-    // for (int ll = 0; ll <= trap_L; ll++) {
-    //   double phi_pole = MY_2PI * ll / (double(trap_L) + 1.0);
-    //   for (int kk = 0; kk < num_quadrature; kk++) {
-    //     double theta_pole = (iang * 0.5 * abscissa[kk]) + (iang * 0.5);
-    //     vol2 += weights[kk] * pow(get_shape_radius(sht, theta_pole, phi_pole), 3) *
-    //         std::sin(theta_pole);
-    //   }
-    // }
-    // vol2 *= (MY_PI * iang / ((double(trap_L) + 1.0))) / 3.0;
-    // //----------------------------------
 
     vol_byshape[sht] *= factor;
     i11 *= factor;
@@ -371,18 +344,6 @@ void AtomVecSpherharm::getI()
     tensor[0][2] = tensor[2][0] = itensor[4];
     tensor[0][1] = tensor[1][0] = itensor[3];
 
-    if (verbose_out) {
-      std::cout << std::endl;
-      std::cout << "Total Volume" << std::endl;
-      std::cout << vol_byshape[sht] << std::endl;
-      std::cout << std::endl;
-      // std::cout << "Total Volume Method 2" << std::endl;
-      // std::cout << vol2 << std::endl;
-      std::cout << std::endl;
-      std::cout << "Iniertia tensor" << std::endl;
-      std::cout << itensor[0] << " " << itensor[1] << " " << itensor[2] << " " << itensor[3] << " "
-                << itensor[4] << " " << itensor[5] << " " << std::endl;
-    }
 
     ierror = MathEigen::jacobi3(tensor, inertia, evectors);
     if (ierror) error->all(FLERR, "Insufficient Jacobi rotations for rigid body");
@@ -410,35 +371,9 @@ void AtomVecSpherharm::getI()
     MathExtra::cross3(ex, ey, cross);
     if (MathExtra::dot3(cross, ez) < 0.0) MathExtra::negate3(ez);
 
-    if (verbose_out) {
-      std::cout << std::endl;
-      std::cout << "Iniertia tensor eigenvectors" << std::endl;
-      std::cout << ex[0] << " " << ex[1] << " " << ex[2] << " " << std::endl;
-      std::cout << ey[0] << " " << ey[1] << " " << ey[2] << " " << std::endl;
-      std::cout << ez[0] << " " << ez[1] << " " << ez[2] << " " << std::endl;
-
-      std::cout << std::endl;
-      std::cout << "Iniertia tensor eigenvalues (principle inertia)" << std::endl;
-      std::cout << inertia[0] << " " << inertia[1] << " " << inertia[2] << " " << std::endl;
-    }
 
     // create initial quaternion
     MathExtra::exyz_to_q(ex, ey, ez, quatinit_byshape[sht]);
-
-    if (verbose_out) {
-      std::cout << std::endl;
-      std::cout << "Initial Quaternion (Defined by Iniertia)" << std::endl;
-      std::cout << quatinit_byshape[sht][0] << " " << quatinit_byshape[sht][1] << " "
-                << quatinit_byshape[sht][2] << " " << quatinit_byshape[sht][3] << std::endl;
-
-      MathExtra::q_to_exyz(quatinit_byshape[sht], ex, ey, ez);
-      std::cout << std::endl;
-      std::cout << "Initial Quaternion (Defined by Iniertia) converted back to eigenvectors"
-                << std::endl;
-      std::cout << ex[0] << " " << ex[1] << " " << ex[2] << " " << std::endl;
-      std::cout << ey[0] << " " << ey[1] << " " << ey[2] << " " << std::endl;
-      std::cout << ez[0] << " " << ez[1] << " " << ez[2] << " " << std::endl;
-    }
 
     pinertia_byshape[sht][0] = inertia[0];
     pinertia_byshape[sht][1] = inertia[1];
@@ -528,19 +463,19 @@ void AtomVecSpherharm::calcexpansionfactors_gauss()
           x_val = cos(theta);
           loc = nloc;
           // norm_fact = std::sqrt((2.0*double(n)+1.0)*MathSpecial::factorial(n-m)/(MY_4PI*MathSpecial::factorial(n+m)));
-          norm_fact = std::sqrt((2.0 * double(n) + 1.0) / MY_4PI);
-          P_n_m = std::assoc_legendre(n, 0, x_val) * std::sqrt((2.0 * double(n) + 1.0) / MY_4PI);
+          // norm_fact = std::sqrt((2.0 * double(n) + 1.0) / MY_4PI);
+          P_n_m = plegendre(n, 0, x_val);
 
           r_n[k] += shcoeffs_byshape[sht][(n + 1) * (n + 2) - 2] * P_n_m;
           for (int m = n; m > 0; m--) {    // For each m in current harmonic n
             mphi = (double) m * phi;
-            // P_n_m = plegendre(n, m, x_val);
+            P_n_m = plegendre(n, m, x_val);
 
-            norm_fact = pow(-1, m) *
-                std::sqrt(((2 * n + 1) * MathSpecial::factorial(n - m)) /
-                          (MY_4PI * MathSpecial::factorial(n + m)));
+              // norm_fact = pow(-1, m) *
+              //     std::sqrt(((2 * n + 1) * MathSpecial::factorial(n - m)) /
+              //               (MY_4PI * MathSpecial::factorial(n + m)));
 
-            P_n_m = std::assoc_legendre(n, m, x_val) * norm_fact;
+              // P_n_m = std::assoc_legendre(n, m, x_val) * norm_fact;
 
             r_n[k] += (shcoeffs_byshape[sht][loc] * cos(mphi) -
                        shcoeffs_byshape[sht][loc + 1] * sin(mphi)) *
@@ -552,23 +487,23 @@ void AtomVecSpherharm::calcexpansionfactors_gauss()
             r_npo[k] = r_n[k];
             n++;
             loc = n * (n + 1);
-            // P_n_m = plegendre(n, 0, x_val);
-            norm_fact = pow(-1, 0) *
-                std::sqrt(((2 * n + 1) * MathSpecial::factorial(n - 0)) /
-                          (MY_4PI * MathSpecial::factorial(n + 0)));
+            P_n_m = plegendre(n, 0, x_val);
+            // norm_fact = pow(-1, 0) *
+            //     std::sqrt(((2 * n + 1) * MathSpecial::factorial(n - 0)) /
+            //               (MY_4PI * MathSpecial::factorial(n + 0)));
 
-            P_n_m = std::assoc_legendre(n, 0, x_val) * norm_fact;
+            // P_n_m = std::assoc_legendre(n, 0, x_val) * norm_fact;
 
             r_npo[k] += shcoeffs_byshape[sht][(n + 1) * (n + 2) - 2] * P_n_m;
             for (int m = n; m > 0; m--) {
               mphi = (double) m * phi;
-              // P_n_m = plegendre(n, m, x_val);
+              P_n_m = plegendre(n, m, x_val);
 
-              norm_fact = pow(-1, m) *
-                  std::sqrt(((2 * n + 1) * MathSpecial::factorial(n - m)) /
-                            (MY_4PI * MathSpecial::factorial(n + m)));
+              // norm_fact = pow(-1, m) *
+              //     std::sqrt(((2 * n + 1) * MathSpecial::factorial(n - m)) /
+              //               (MY_4PI * MathSpecial::factorial(n + m)));
 
-              P_n_m = std::assoc_legendre(n, m, x_val) * norm_fact;
+              // P_n_m = std::assoc_legendre(n, m, x_val) * norm_fact;
 
               r_npo[k] += (shcoeffs_byshape[sht][loc] * cos(mphi) -
                            shcoeffs_byshape[sht][loc + 1] * sin(mphi)) *
@@ -601,18 +536,6 @@ void AtomVecSpherharm::calcexpansionfactors_gauss()
     }
     expfacts_byshape[sht][maxshexpan] = 1.0;
 
-    if (verbose_out) {
-      std::cout << "R_max for final harmonic " << maxrad_byshape[sht] << std::endl;
-      std::cout << "0th harmonic expansion factor " << expfacts_byshape[sht][0] << std::endl;
-      std::cout << "0th harmonic sphere radius "
-                << shcoeffs_byshape[sht][0] * std::sqrt(1.0 / (4.0 * MY_PI)) << std::endl;
-      std::cout << "expanded 0th harmonic sphere radius "
-                << expfacts_byshape[0][0] * double(shcoeffs_byshape[sht][0]) *
-              std::sqrt(1.0 / (4.0 * MY_PI))
-                << std::endl;
-
-      for (int n = 0; n <= maxshexpan; n++) { std::cout << expfacts_byshape[0][n] << std::endl; }
-    }
 
     maxrad_byshape[sht] *= safety_factor;
   }
@@ -663,40 +586,21 @@ int AtomVecSpherharm::check_contact(int sht, double phi_proj, double theta_proj,
       norm_fact = pow(-1, 0) *
           std::sqrt(((2 * 1 + 1) * MathSpecial::factorial(1 - 0)) /
                     (MY_4PI * MathSpecial::factorial(1 + 0)));
-      P_n_m = std::assoc_legendre(1, 0, x_val) * norm_fact;
-      // P_n_m = plegendre(1, 0, x_val);
+      P_n_m = plegendre(1, 0, x_val);
       Pnm_m2[0] = P_n_m;
       rad_val += shcoeffs_byshape[sht][4] * P_n_m;
-      norm_fact = pow(-1, 1) *
-          std::sqrt(((2 * 1 + 1) * MathSpecial::factorial(1 - 1)) /
-                    (MY_4PI * MathSpecial::factorial(1 + 1)));
 
-      P_n_m = std::assoc_legendre(1, 1, x_val) * norm_fact;
-
-      // P_n_m = plegendre(1, 1, x_val);
+      P_n_m = plegendre(1, 1, x_val);
       Pnm_m2[1] = P_n_m;
       mphi = 1.0 * phi_proj;
       rad_val += (shcoeffs_byshape[sht][2] * cos(mphi) - shcoeffs_byshape[sht][3] * sin(mphi)) *
           2.0 * P_n_m;
     } else if (n == 2) {
-      // P_n_m = plegendre(2, 0, x_val);
-
-      norm_fact = pow(-1, 0) *
-          std::sqrt(((2 * 2 + 1) * MathSpecial::factorial(2 - 0)) /
-                    (MY_4PI * MathSpecial::factorial(2 + 0)));
-
-      P_n_m = std::assoc_legendre(2, 0, x_val) * norm_fact;
-
+      P_n_m = plegendre(2, 0, x_val);
       Pnm_m1[0] = P_n_m;
       rad_val += shcoeffs_byshape[sht][10] * P_n_m;
       for (int m = 2; m >= 1; m--) {
-        // P_n_m = plegendre(2, m, x_val);
-
-        norm_fact = pow(-1, m) *
-            std::sqrt(((2 * 2 + 1) * MathSpecial::factorial(2 - m)) /
-                      (MY_4PI * MathSpecial::factorial(2 + m)));
-
-        P_n_m = std::assoc_legendre(2, m, x_val) * norm_fact;
+        P_n_m = plegendre(2, m, x_val);
 
         Pnm_m1[m] = P_n_m;
         mphi = (double) m * phi_proj;
@@ -775,42 +679,32 @@ double AtomVecSpherharm::get_shape_radius(int sht, double theta, double phi)
   Pnm_m2.resize(maxshexpan + 1, 0.0);
   Pnm_m1.resize(maxshexpan + 1, 0.0);
   x_val = std::cos(theta);
-  for (n = 1; n <= maxshexpan; n++) {
+  for (n=1; n<=maxshexpan; n++){
     nloc = n * (n + 1);
     if (n == 1) {
-      P_n_m = std::assoc_legendre(1, 0, x_val) * std::sqrt((2.0 * double(1.0) + 1.0) / MY_4PI);
+      P_n_m = plegendre(1, 0, x_val);
       Pnm_m2[0] = P_n_m;
       rad_val += shcoeffs_byshape[sht][4] * P_n_m;
-      P_n_m = std::assoc_legendre(1, 1, x_val) * std::sqrt(3.0 / (2 * MY_4PI)) * (-1);
+      P_n_m = plegendre(1, 1, x_val);
       Pnm_m2[1] = P_n_m;
       mphi = 1.0 * phi;
-      rad_val += (shcoeffs_byshape[sht][2] * cos(mphi) - shcoeffs_byshape[sht][3] * sin(mphi)) *
-          2.0 * P_n_m;
+      rad_val += (shcoeffs_byshape[sht][2] * cos(mphi) - shcoeffs_byshape[sht][3] * sin(mphi)) * 2.0 * P_n_m;
     } else if (n == 2) {
-      P_n_m = std::assoc_legendre(2, 0, x_val) * std::sqrt((2.0 * double(2.0) + 1.0) / MY_4PI);
+      P_n_m = plegendre(2, 0, x_val);
       Pnm_m1[0] = P_n_m;
       rad_val += shcoeffs_byshape[sht][10] * P_n_m;
       for (int m = 2; m >= 1; m--) {
-        norm_fact = pow(-1, m) *
-            std::sqrt((5.0 * MathSpecial::factorial(2 - m)) /
-                      (MY_4PI * MathSpecial::factorial(2 + m)));
-
-        P_n_m = std::assoc_legendre(2, m, x_val) * norm_fact;
-        // P_n_m = plegendre(2, m, x_val);
+        P_n_m = plegendre(2, m, x_val);
         Pnm_m1[m] = P_n_m;
         mphi = (double) m * phi;
-        rad_val += (shcoeffs_byshape[sht][nloc] * cos(mphi) -
-                    shcoeffs_byshape[sht][nloc + 1] * sin(mphi)) *
-            2.0 * P_n_m;
+        rad_val += (shcoeffs_byshape[sht][nloc] * cos(mphi) - shcoeffs_byshape[sht][nloc + 1] * sin(mphi)) * 2.0 *
+                P_n_m;
         nloc += 2;
       }
       Pnm_nn = Pnm_m1[2];
     } else {
       P_n_m = plegendre_recycle(n, 0, x_val, Pnm_m1[0], Pnm_m2[0]);
 
-      // norm_fact= pow(-1,0)*std::sqrt(((2*n+1)*MathSpecial::factorial(n-0))/(MY_4PI*MathSpecial::factorial(n+0)));
-
-      // P_n_m = std::assoc_legendre(n, 0, x_val)*norm_fact;
 
       Pnm_m2[0] = Pnm_m1[0];
       Pnm_m1[0] = P_n_m;
@@ -819,9 +713,6 @@ double AtomVecSpherharm::get_shape_radius(int sht, double theta, double phi)
       loc -= 2;
       for (int m = 1; m < n - 1; m++) {
         P_n_m = plegendre_recycle(n, m, x_val, Pnm_m1[m], Pnm_m2[m]);
-
-        // norm_fact= pow(-1,m)*std::sqrt(((2*n+1)*MathSpecial::factorial(n-m))/(MY_4PI*MathSpecial::factorial(n+m)));
-        // P_n_m = std::assoc_legendre(n, m, x_val)*norm_fact;
 
         Pnm_m2[m] = Pnm_m1[m];
         Pnm_m1[m] = P_n_m;
@@ -842,9 +733,6 @@ double AtomVecSpherharm::get_shape_radius(int sht, double theta, double phi)
       loc -= 2;
 
       P_n_m = plegendre_nn(n, x_val, Pnm_nn);
-
-      // norm_fact= pow(-1,n)*std::sqrt(((2*n+1)*MathSpecial::factorial(n-n))/(MY_4PI*MathSpecial::factorial(n+n)));
-      // P_n_m = std::assoc_legendre(n, n, x_val)*norm_fact;
 
       Pnm_nn = P_n_m;
       Pnm_m1[n] = P_n_m;
@@ -861,12 +749,10 @@ double AtomVecSpherharm::get_shape_radius(int sht, double theta, double phi)
   Given a shape and a spherical coordinate (value of theta and phi), return
   the radius at the maximum degree of spherical harmonic expansion.
 ------------------------------------------------------------------------- */
-double AtomVecSpherharm::get_shape_radius_and_normal(int sht, double theta, double phi,
-                                                     double rnorm[3])
-{
+double AtomVecSpherharm::get_shape_radius_and_normal(int sht, double theta, double phi, double rnorm[3]) {
 
   int n, nloc, loc;
-  double P_n_m, x_val, mphi, Pnm_nn, fnm, st, norm_fact;
+  double P_n_m, x_val, mphi, Pnm_nn, fnm, st;
   std::vector<double> Pnm_m2, Pnm_m1;
 
   fnm = std::sqrt(1.0 / MY_4PI);
@@ -874,110 +760,70 @@ double AtomVecSpherharm::get_shape_radius_and_normal(int sht, double theta, doub
   double rad_dphi, rad_dtheta;
   rad_dphi = rad_dtheta = 0.0;
 
-  Pnm_m2.resize(maxshexpan + 1, 0.0);
-  Pnm_m1.resize(maxshexpan + 1, 0.0);
+  Pnm_m2.resize(maxshexpan+1, 0.0);
+  Pnm_m1.resize(maxshexpan+1, 0.0);
 
-  if (sin(theta) == 0.0)
-    theta += EPSILON;    // otherwise dividing by sin(theta) for gradients will not work
-  if (sin(phi) == 0.0) phi += EPSILON;    // To be consistent...
+  if (sin(theta) == 0.0) theta += EPSILON; // otherwise dividing by sin(theta) for gradients will not work
+  if (sin(phi) == 0.0) phi += EPSILON; // To be consistent...
   x_val = std::cos(theta);
   st = std::sin(theta);
 
-  for (n = 1; n <= maxshexpan; n++) {
+  for (n=1; n<=maxshexpan; n++){
     nloc = n * (n + 1);
 
     // n=1
     if (n == 1) {
       // n=1, m=0
-      // P_n_m = plegendre(1, 0, x_val);
-
-      norm_fact = pow(-1, 0) *
-          std::sqrt(((2 * 1 + 1) * MathSpecial::factorial(1 - 0)) /
-                    (MY_4PI * MathSpecial::factorial(1 + 0)));
-      P_n_m = std::assoc_legendre(1, 0, x_val) * norm_fact;
-
+      P_n_m = plegendre(1, 0, x_val);
       Pnm_m2[0] = P_n_m;
       rad_val += shcoeffs_byshape[sht][4] * P_n_m;
       fnm = std::sqrt(3.0 / MY_4PI);
-      rad_dtheta -= (shcoeffs_byshape[sht][4] * fnm / st) *
-          ((2.0 * x_val * std::assoc_legendre(1, 0, x_val)) -
-           (2.0 * std::assoc_legendre(2, 0, x_val)));
+      rad_dtheta -= (shcoeffs_byshape[sht][4]*fnm/st)*((2.0*x_val*plgndr(1,0,x_val))-
+              (2.0*plgndr(2, 0, x_val)));
       // n=1, m=1
-      // P_n_m = plegendre(1, 1, x_val);
-      norm_fact = pow(-1, 1) *
-          std::sqrt(((2 * 1 + 1) * MathSpecial::factorial(1 - 1)) /
-                    (MY_4PI * MathSpecial::factorial(1 + 1)));
-
-      P_n_m = std::assoc_legendre(1, 1, x_val) * norm_fact;
-
+      P_n_m = plegendre(1, 1, x_val);
       Pnm_m2[1] = P_n_m;
       mphi = 1.0 * phi;
-      rad_val += (shcoeffs_byshape[sht][2] * cos(mphi) - shcoeffs_byshape[sht][3] * sin(mphi)) *
-          2.0 * P_n_m;
-      rad_dphi -= (shcoeffs_byshape[sht][2] * sin(mphi) + shcoeffs_byshape[sht][3] * cos(mphi)) *
-          2.0 * P_n_m;
+      rad_val += (shcoeffs_byshape[sht][2] * cos(mphi) - shcoeffs_byshape[sht][3] * sin(mphi)) * 2.0 * P_n_m;
+      rad_dphi -= (shcoeffs_byshape[sht][2] * sin(mphi) + shcoeffs_byshape[sht][3] * cos(mphi)) * 2.0 * P_n_m;
       fnm = std::sqrt(3.0 / (2.0 * MY_4PI));
-      rad_dtheta += 2.0 * (fnm / st) *
-          ((2.0 * x_val * pow(-1, 1) * std::assoc_legendre(1, 1, x_val)) -
-           (pow(-1, 1) * std::assoc_legendre(2, 1, x_val))) *
-          ((shcoeffs_byshape[sht][3] * sin(mphi)) - (shcoeffs_byshape[sht][2] * cos(mphi)));
+      rad_dtheta += 2.0*(fnm/st)*((2.0*x_val*plgndr(1,1,x_val))-(plgndr(2, 1, x_val)))*
+              ((shcoeffs_byshape[sht][3]*sin(mphi))-(shcoeffs_byshape[sht][2] * cos(mphi))) ;
       // n = 2
     } else if (n == 2) {
       // n=2, m=0
-      // P_n_m = plegendre(2, 0, x_val);
-
-      norm_fact = pow(-1, 0) *
-          std::sqrt(((2 * 2 + 1) * MathSpecial::factorial(2 - 0)) /
-                    (MY_4PI * MathSpecial::factorial(2 + 0)));
-
-      P_n_m = std::assoc_legendre(2, 0, x_val) * norm_fact;
-
+      P_n_m = plegendre(2, 0, x_val);
       Pnm_m1[0] = P_n_m;
       rad_val += shcoeffs_byshape[sht][10] * P_n_m;
       fnm = std::sqrt(5.0 / MY_4PI);
-      rad_dtheta -= (shcoeffs_byshape[sht][10] * fnm / st) *
-          ((3.0 * x_val * pow(-1, 0) * std::assoc_legendre(2, 0, x_val)) -
-           (3.0 * pow(-1, 0) * std::assoc_legendre(3, 0, x_val)));
+      rad_dtheta -= (shcoeffs_byshape[sht][10]*fnm / st)*((3.0*x_val*plgndr(2,0,x_val))-
+              (3.0*plgndr(3, 0, x_val)));
       // n=2 2>=m>0
       for (int m = 2; m >= 1; m--) {
-        // P_n_m = plegendre(2, m, x_val);
-
-        norm_fact = pow(-1, m) *
-            std::sqrt(((2 * 2 + 1) * MathSpecial::factorial(2 - m)) /
-                      (MY_4PI * MathSpecial::factorial(2 + m)));
-
-        P_n_m = std::assoc_legendre(2, m, x_val) * norm_fact;
-
+        P_n_m = plegendre(2, m, x_val);
         Pnm_m1[m] = P_n_m;
         mphi = (double) m * phi;
-        rad_val += (shcoeffs_byshape[sht][nloc] * cos(mphi) -
-                    shcoeffs_byshape[sht][nloc + 1] * sin(mphi)) *
-            2.0 * P_n_m;
-        rad_dphi -= (shcoeffs_byshape[sht][nloc] * sin(mphi) +
-                     shcoeffs_byshape[sht][nloc + 1] * cos(mphi)) *
-            2.0 * P_n_m * (double) m;
-        fnm = std::sqrt((2.0 * double(n) + 1.0) * MathSpecial::factorial(n - m) /
-                        (MY_4PI * MathSpecial::factorial(n + m)));
-        rad_dtheta += 2.0 * (fnm / st) *
-            ((double(n + 1) * x_val * pow(-1, m) * std::assoc_legendre(n, m, x_val)) -
-             (double(n - m + 1) * pow(-1, m) * std::assoc_legendre(n + 1, m, x_val))) *
-            ((shcoeffs_byshape[sht][nloc + 1] * sin(mphi)) -
-             (shcoeffs_byshape[sht][nloc] * cos(mphi)));
+        rad_val += (shcoeffs_byshape[sht][nloc] * cos(mphi) - shcoeffs_byshape[sht][nloc + 1] * sin(mphi)) * 2.0 *
+                P_n_m;
+        rad_dphi -= (shcoeffs_byshape[sht][nloc] * sin(mphi) + shcoeffs_byshape[sht][nloc + 1] * cos(mphi)) * 2.0 *
+                P_n_m * (double) m;
+        fnm = std::sqrt((2.0*double(n)+1.0)*MathSpecial::factorial(n-m)/(MY_4PI*MathSpecial::factorial(n+m)));
+        rad_dtheta += 2.0*(fnm/st)*((double(n+1)*x_val*plgndr(n,m,x_val))-(double(n-m+1)*plgndr(n+1, m, x_val)))*
+                ((shcoeffs_byshape[sht][nloc+1]*sin(mphi))-(shcoeffs_byshape[sht][nloc] * cos(mphi)));
         nloc += 2;
       }
       Pnm_nn = Pnm_m1[2];
 
-      // 2 < n > n-1
+    // 2 < n > n-1
     } else {
       P_n_m = plegendre_recycle(n, 0, x_val, Pnm_m1[0], Pnm_m2[0]);
       Pnm_m2[0] = Pnm_m1[0];
       Pnm_m1[0] = P_n_m;
       loc = (n + 1) * (n + 2) - 2;
       rad_val += shcoeffs_byshape[sht][loc] * P_n_m;
-      fnm = std::sqrt((2.0 * double(n) + 1.0) / (MY_4PI));
-      rad_dtheta -= (shcoeffs_byshape[sht][loc] * fnm / st) *
-          ((double(n + 1) * x_val * pow(-1, 0) * std::assoc_legendre(n, 0, x_val)) -
-           (double(n + 1) * pow(-1, 0) * std::assoc_legendre(n + 1, 0, x_val)));
+      fnm = std::sqrt((2.0*double(n)+1.0)/(MY_4PI));
+      rad_dtheta -= (shcoeffs_byshape[sht][loc]*fnm / st)*
+              ((double(n+1)*x_val*plgndr(n,0,x_val))-(double(n+1)*plgndr(n+1, 0, x_val)));
 
       loc -= 2;
       for (int m = 1; m < n - 1; m++) {
@@ -985,19 +831,12 @@ double AtomVecSpherharm::get_shape_radius_and_normal(int sht, double theta, doub
         Pnm_m2[m] = Pnm_m1[m];
         Pnm_m1[m] = P_n_m;
         mphi = (double) m * phi;
-        rad_val +=
-            (shcoeffs_byshape[sht][loc] * cos(mphi) - shcoeffs_byshape[sht][loc + 1] * sin(mphi)) *
-            2.0 * P_n_m;
-        rad_dphi -=
-            (shcoeffs_byshape[sht][loc] * sin(mphi) + shcoeffs_byshape[sht][loc + 1] * cos(mphi)) *
-            2.0 * P_n_m * (double) m;
-        fnm = std::sqrt((2.0 * double(n) + 1.0) * MathSpecial::factorial(n - m) /
-                        (MY_4PI * MathSpecial::factorial(n + m)));
-        rad_dtheta += 2.0 * (fnm / st) *
-            ((double(n + 1) * x_val * pow(-1, m) * std::assoc_legendre(n, m, x_val)) -
-             (double(n - m + 1) * pow(-1, m) * std::assoc_legendre(n + 1, m, x_val))) *
-            ((shcoeffs_byshape[sht][loc + 1] * sin(mphi)) -
-             (shcoeffs_byshape[sht][loc] * cos(mphi)));
+        rad_val += (shcoeffs_byshape[sht][loc] * cos(mphi) - shcoeffs_byshape[sht][loc + 1] * sin(mphi)) * 2.0 * P_n_m;
+        rad_dphi -= (shcoeffs_byshape[sht][loc] * sin(mphi) + shcoeffs_byshape[sht][loc + 1] * cos(mphi)) * 2.0 *
+                P_n_m * (double) m;
+        fnm = std::sqrt((2.0*double(n)+1.0)*MathSpecial::factorial(n-m)/(MY_4PI*MathSpecial::factorial(n+m)));
+        rad_dtheta += 2.0*(fnm/st)*((double(n+1)*x_val*plgndr(n,m,x_val))-(double(n-m+1)*plgndr(n+1, m, x_val)))*
+                      ((shcoeffs_byshape[sht][loc+1]*sin(mphi))-(shcoeffs_byshape[sht][loc] * cos(mphi)));
         loc -= 2;
       }
 
@@ -1006,17 +845,12 @@ double AtomVecSpherharm::get_shape_radius_and_normal(int sht, double theta, doub
       Pnm_m2[n - 1] = Pnm_m1[n - 1];
       Pnm_m1[n - 1] = P_n_m;
       mphi = (double) (n - 1) * phi;
-      rad_val +=
-          (shcoeffs_byshape[sht][loc] * cos(mphi) - shcoeffs_byshape[sht][loc + 1] * sin(mphi)) *
-          2.0 * P_n_m;
-      rad_dphi -=
-          (shcoeffs_byshape[sht][loc] * sin(mphi) + shcoeffs_byshape[sht][loc + 1] * cos(mphi)) *
-          2.0 * P_n_m * (double) (n - 1);
-      fnm = std::sqrt((2.0 * double(n) + 1.0) / (MY_4PI * MathSpecial::factorial(2 * n - 1)));
-      rad_dtheta += 2.0 * (fnm / st) *
-          ((double(n + 1) * x_val * pow(-1, n - 1) * std::assoc_legendre(n, n - 1, x_val)) -
-           (2.0 * pow(-1, n - 1) * std::assoc_legendre(n + 1, n - 1, x_val))) *
-          ((shcoeffs_byshape[sht][loc + 1] * sin(mphi)) - (shcoeffs_byshape[sht][loc] * cos(mphi)));
+      rad_val += (shcoeffs_byshape[sht][loc] * cos(mphi) - shcoeffs_byshape[sht][loc + 1] * sin(mphi)) * 2.0 * P_n_m;
+      rad_dphi -= (shcoeffs_byshape[sht][loc] * sin(mphi) + shcoeffs_byshape[sht][loc + 1] * cos(mphi)) * 2.0 * P_n_m *
+              (double) (n-1);
+      fnm = std::sqrt((2.0*double(n)+1.0)/(MY_4PI*MathSpecial::factorial(2*n-1)));
+      rad_dtheta += 2.0*(fnm/st)*((double(n+1)*x_val*plgndr(n,n-1,x_val))-(2.0*plgndr(n+1, n-1, x_val)))*
+                    ((shcoeffs_byshape[sht][loc+1]*sin(mphi))-(shcoeffs_byshape[sht][loc] * cos(mphi)));
       loc -= 2;
 
       // m = n
@@ -1024,17 +858,12 @@ double AtomVecSpherharm::get_shape_radius_and_normal(int sht, double theta, doub
       Pnm_nn = P_n_m;
       Pnm_m1[n] = P_n_m;
       mphi = (double) n * phi;
-      rad_val +=
-          (shcoeffs_byshape[sht][loc] * cos(mphi) - shcoeffs_byshape[sht][loc + 1] * sin(mphi)) *
-          2.0 * P_n_m;
-      rad_dphi -=
-          (shcoeffs_byshape[sht][loc] * sin(mphi) + shcoeffs_byshape[sht][loc + 1] * cos(mphi)) *
-          2.0 * P_n_m * (double) n;
-      fnm = std::sqrt((2.0 * double(n) + 1.0) / (MY_4PI * MathSpecial::factorial(2 * n)));
-      rad_dtheta += 2.0 * (fnm / st) *
-          ((double(n + 1) * x_val * pow(-1, n) * std::assoc_legendre(n, n, x_val)) -
-           (pow(-1, n) * std::assoc_legendre(n + 1, n, x_val))) *
-          ((shcoeffs_byshape[sht][loc + 1] * sin(mphi)) - (shcoeffs_byshape[sht][loc] * cos(mphi)));
+      rad_val += (shcoeffs_byshape[sht][loc] * cos(mphi) - shcoeffs_byshape[sht][loc + 1] * sin(mphi)) * 2.0 * P_n_m;
+      rad_dphi -= (shcoeffs_byshape[sht][loc] * sin(mphi) + shcoeffs_byshape[sht][loc + 1] * cos(mphi)) * 2.0 * P_n_m *
+              (double) n;
+      fnm = std::sqrt((2.0*double(n)+1.0)/(MY_4PI*MathSpecial::factorial(2*n)));
+      rad_dtheta += 2.0*(fnm/st)*((double(n+1)*x_val*plgndr(n,n,x_val))-(plgndr(n+1, n, x_val)))*
+                    ((shcoeffs_byshape[sht][loc+1]*sin(mphi))-(shcoeffs_byshape[sht][loc] * cos(mphi)));
     }
   }
 
@@ -1046,12 +875,10 @@ double AtomVecSpherharm::get_shape_radius_and_normal(int sht, double theta, doub
 /* ----------------------------------------------------------------------
   Calculating the radius and normal using compensated sums
 ------------------------------------------------------------------------- */
-double AtomVecSpherharm::get_shape_radius_and_normal_compensated(int sht, double theta, double phi,
-                                                                 double rnorm[3])
-{
+double AtomVecSpherharm::get_shape_radius_and_normal_compensated(int sht, double theta, double phi, double rnorm[3]) {
 
   int n, nloc, loc;
-  double P_n_m, x_val, mphi, Pnm_nn, fnm, st, norm_fact;
+  double P_n_m, x_val, mphi, Pnm_nn, fnm, st;
   std::vector<double> Pnm_m2, Pnm_m1;
 
   fnm = std::sqrt(1.0 / MY_4PI);
@@ -1059,12 +886,11 @@ double AtomVecSpherharm::get_shape_radius_and_normal_compensated(int sht, double
   double rad_dphi, rad_dtheta;
   rad_dphi = rad_dtheta = 0.0;
 
-  Pnm_m2.resize(maxshexpan + 1, 0.0);
-  Pnm_m1.resize(maxshexpan + 1, 0.0);
+  Pnm_m2.resize(maxshexpan+1, 0.0);
+  Pnm_m1.resize(maxshexpan+1, 0.0);
 
-  if (sin(theta) == 0.0)
-    theta += EPSILON;    // otherwise dividing by sin(theta) for gradients will not work
-  if (sin(phi) == 0.0) phi += EPSILON;    // To be consistent...
+  if (sin(theta) == 0.0) theta += EPSILON; // otherwise dividing by sin(theta) for gradients will not work
+  if (sin(phi) == 0.0) phi += EPSILON; // To be consistent...
   x_val = std::cos(theta);
   st = std::sin(theta);
 
@@ -1072,103 +898,63 @@ double AtomVecSpherharm::get_shape_radius_and_normal_compensated(int sht, double
   c = 0.0;
   ksum = rad_val;
 
-  for (n = 1; n <= maxshexpan; n++) {
+  for (n=1; n<=maxshexpan; n++){
     nloc = n * (n + 1);
 
     // n=1
     if (n == 1) {
       // n=1, m=0
-      // P_n_m = plegendre(1, 0, x_val);
-
-      norm_fact = pow(-1, 0) *
-          std::sqrt(((2 * 1 + 1) * MathSpecial::factorial(1 - 0)) /
-                    (MY_4PI * MathSpecial::factorial(1 + 0)));
-
-      P_n_m = std::assoc_legendre(1, 0, x_val) * norm_fact;
-
+      P_n_m = plegendre(1, 0, x_val);
       Pnm_m2[0] = P_n_m;
       rad_val = shcoeffs_byshape[sht][4] * P_n_m;
       y = rad_val - c;
       t = ksum + y;
-      c = (t - ksum) - y;
+      c = (t - ksum) -y;
       ksum = t;
       fnm = std::sqrt(3.0 / MY_4PI);
-      rad_dtheta -= (shcoeffs_byshape[sht][4] * fnm / st) *
-          ((2.0 * x_val * pow(-1, 0) * std::assoc_legendre(1, 0, x_val)) -
-           (2.0 * pow(-1, 0) * std::assoc_legendre(2, 0, x_val)));
+      rad_dtheta -= (shcoeffs_byshape[sht][4]*fnm/st)*((2.0*x_val*plgndr(1,0,x_val))-
+              (2.0*plgndr(2, 0, x_val)));
       // n=1, m=1
-      // P_n_m = plegendre(1, 1, x_val);
-      norm_fact = pow(-1, 1) *
-          std::sqrt(((2 * 1 + 1) * MathSpecial::factorial(1 - 1)) /
-                    (MY_4PI * MathSpecial::factorial(1 + 1)));
-
-      P_n_m = std::assoc_legendre(1, 1, x_val) * norm_fact;
-
+      P_n_m = plegendre(1, 1, x_val);
       Pnm_m2[1] = P_n_m;
       mphi = 1.0 * phi;
-      rad_val = (shcoeffs_byshape[sht][2] * cos(mphi) - shcoeffs_byshape[sht][3] * sin(mphi)) *
-          2.0 * P_n_m;
+      rad_val = (shcoeffs_byshape[sht][2] * cos(mphi) - shcoeffs_byshape[sht][3] * sin(mphi)) * 2.0 * P_n_m;
       y = rad_val - c;
       t = ksum + y;
-      c = (t - ksum) - y;
+      c = (t - ksum) -y;
       ksum = t;
-      rad_dphi -= (shcoeffs_byshape[sht][2] * sin(mphi) + shcoeffs_byshape[sht][3] * cos(mphi)) *
-          2.0 * P_n_m;
+      rad_dphi -= (shcoeffs_byshape[sht][2] * sin(mphi) + shcoeffs_byshape[sht][3] * cos(mphi)) * 2.0 * P_n_m;
       fnm = std::sqrt(3.0 / (2.0 * MY_4PI));
-      rad_dtheta += 2.0 * (fnm / st) *
-          ((2.0 * x_val * pow(-1, 1) * std::assoc_legendre(1, 1, x_val)) -
-           (pow(-1, 1) * std::assoc_legendre(2, 1, x_val))) *
-          ((shcoeffs_byshape[sht][3] * sin(mphi)) - (shcoeffs_byshape[sht][2] * cos(mphi)));
+      rad_dtheta += 2.0*(fnm/st)*((2.0*x_val*plgndr(1,1,x_val))-(plgndr(2, 1, x_val)))*
+                    ((shcoeffs_byshape[sht][3]*sin(mphi))-(shcoeffs_byshape[sht][2] * cos(mphi))) ;
       // n = 2
     } else if (n == 2) {
       // n=2, m=0
-      // P_n_m = plegendre(2, 0, x_val);
-
-      norm_fact = pow(-1, 0) *
-          std::sqrt(((2 * 2 + 1) * MathSpecial::factorial(2 - 0)) /
-                    (MY_4PI * MathSpecial::factorial(2 + 0)));
-
-      P_n_m = std::assoc_legendre(2, 0, x_val) * norm_fact;
-
+      P_n_m = plegendre(2, 0, x_val);
       Pnm_m1[0] = P_n_m;
       rad_val = shcoeffs_byshape[sht][10] * P_n_m;
       y = rad_val - c;
       t = ksum + y;
-      c = (t - ksum) - y;
+      c = (t - ksum) -y;
       ksum = t;
       fnm = std::sqrt(5.0 / MY_4PI);
-      rad_dtheta -= (shcoeffs_byshape[sht][10] * fnm / st) *
-          ((3.0 * x_val * pow(-1, 0) * std::assoc_legendre(2, 0, x_val)) -
-           (3.0 * pow(-1, 0) * std::assoc_legendre(3, 0, x_val)));
+      rad_dtheta -= (shcoeffs_byshape[sht][10]*fnm / st)*((3.0*x_val*plgndr(2,0,x_val))-
+              (3.0*plgndr(3, 0, x_val)));
       // n=2 2>=m>0
       for (int m = 2; m >= 1; m--) {
-        // P_n_m = plegendre(2, m, x_val);
-
-        norm_fact = pow(-1, m) *
-            std::sqrt(((2 * 2 + 1) * MathSpecial::factorial(2 - m)) /
-                      (MY_4PI * MathSpecial::factorial(2 + m)));
-
-        P_n_m = std::assoc_legendre(2, m, x_val) * norm_fact;
-
+        P_n_m = plegendre(2, m, x_val);
         Pnm_m1[m] = P_n_m;
         mphi = (double) m * phi;
-        rad_val = (shcoeffs_byshape[sht][nloc] * cos(mphi) -
-                   shcoeffs_byshape[sht][nloc + 1] * sin(mphi)) *
-            2.0 * P_n_m;
+        rad_val = (shcoeffs_byshape[sht][nloc] * cos(mphi) - shcoeffs_byshape[sht][nloc + 1] * sin(mphi)) * 2.0 * P_n_m;
         y = rad_val - c;
         t = ksum + y;
-        c = (t - ksum) - y;
+        c = (t - ksum) -y;
         ksum = t;
-        rad_dphi -= (shcoeffs_byshape[sht][nloc] * sin(mphi) +
-                     shcoeffs_byshape[sht][nloc + 1] * cos(mphi)) *
-            2.0 * P_n_m * (double) m;
-        fnm = std::sqrt((2.0 * double(n) + 1.0) * MathSpecial::factorial(n - m) /
-                        (MY_4PI * MathSpecial::factorial(n + m)));
-        rad_dtheta += 2.0 * (fnm / st) *
-            ((double(n + 1) * x_val * pow(-1, m) * std::assoc_legendre(n, m, x_val)) -
-             (double(n - m + 1) * pow(-1, m) * std::assoc_legendre(n + 1, m, x_val))) *
-            ((shcoeffs_byshape[sht][nloc + 1] * sin(mphi)) -
-             (shcoeffs_byshape[sht][nloc] * cos(mphi)));
+        rad_dphi -= (shcoeffs_byshape[sht][nloc] * sin(mphi) + shcoeffs_byshape[sht][nloc + 1] * cos(mphi)) * 2.0 *
+                P_n_m * (double) m;
+        fnm = std::sqrt((2.0*double(n)+1.0)*MathSpecial::factorial(n-m)/(MY_4PI*MathSpecial::factorial(n+m)));
+        rad_dtheta += 2.0*(fnm/st)*((double(n+1)*x_val*plgndr(n,m,x_val))-(double(n-m+1)*plgndr(n+1, m, x_val)))*
+                      ((shcoeffs_byshape[sht][nloc+1]*sin(mphi))-(shcoeffs_byshape[sht][nloc] * cos(mphi)));
         nloc += 2;
       }
       Pnm_nn = Pnm_m1[2];
@@ -1182,12 +968,11 @@ double AtomVecSpherharm::get_shape_radius_and_normal_compensated(int sht, double
       rad_val = shcoeffs_byshape[sht][loc] * P_n_m;
       y = rad_val - c;
       t = ksum + y;
-      c = (t - ksum) - y;
+      c = (t - ksum) -y;
       ksum = t;
-      fnm = std::sqrt((2.0 * double(n) + 1.0) / (MY_4PI));
-      rad_dtheta -= (shcoeffs_byshape[sht][loc] * fnm / st) *
-          ((double(n + 1) * x_val * pow(-1, 0) * std::assoc_legendre(n, 0, x_val)) -
-           (double(n + 1) * pow(-1, 0) * std::assoc_legendre(n + 1, 0, x_val)));
+      fnm = std::sqrt((2.0*double(n)+1.0)/(MY_4PI));
+      rad_dtheta -= (shcoeffs_byshape[sht][loc]*fnm / st)*
+                    ((double(n+1)*x_val*plgndr(n,0,x_val))-(double(n+1)*plgndr(n+1, 0, x_val)));
 
       loc -= 2;
       for (int m = 1; m < n - 1; m++) {
@@ -1195,23 +980,16 @@ double AtomVecSpherharm::get_shape_radius_and_normal_compensated(int sht, double
         Pnm_m2[m] = Pnm_m1[m];
         Pnm_m1[m] = P_n_m;
         mphi = (double) m * phi;
-        rad_val =
-            (shcoeffs_byshape[sht][loc] * cos(mphi) - shcoeffs_byshape[sht][loc + 1] * sin(mphi)) *
-            2.0 * P_n_m;
+        rad_val = (shcoeffs_byshape[sht][loc] * cos(mphi) - shcoeffs_byshape[sht][loc + 1] * sin(mphi)) * 2.0 * P_n_m;
         y = rad_val - c;
         t = ksum + y;
-        c = (t - ksum) - y;
+        c = (t - ksum) -y;
         ksum = t;
-        rad_dphi -=
-            (shcoeffs_byshape[sht][loc] * sin(mphi) + shcoeffs_byshape[sht][loc + 1] * cos(mphi)) *
-            2.0 * P_n_m * (double) m;
-        fnm = std::sqrt((2.0 * double(n) + 1.0) * MathSpecial::factorial(n - m) /
-                        (MY_4PI * MathSpecial::factorial(n + m)));
-        rad_dtheta += 2.0 * (fnm / st) *
-            ((double(n + 1) * x_val * pow(-1, m) * std::assoc_legendre(n, m, x_val)) -
-             (double(n - m + 1) * pow(-1, m) * std::assoc_legendre(n + 1, m, x_val))) *
-            ((shcoeffs_byshape[sht][loc + 1] * sin(mphi)) -
-             (shcoeffs_byshape[sht][loc] * cos(mphi)));
+        rad_dphi -= (shcoeffs_byshape[sht][loc] * sin(mphi) + shcoeffs_byshape[sht][loc + 1] * cos(mphi)) * 2.0 * P_n_m
+                * (double) m;
+        fnm = std::sqrt((2.0*double(n)+1.0)*MathSpecial::factorial(n-m)/(MY_4PI*MathSpecial::factorial(n+m)));
+        rad_dtheta += 2.0*(fnm/st)*((double(n+1)*x_val*plgndr(n,m,x_val))-(double(n-m+1)*plgndr(n+1, m, x_val)))*
+                      ((shcoeffs_byshape[sht][loc+1]*sin(mphi))-(shcoeffs_byshape[sht][loc] * cos(mphi)));
         loc -= 2;
       }
 
@@ -1220,21 +998,16 @@ double AtomVecSpherharm::get_shape_radius_and_normal_compensated(int sht, double
       Pnm_m2[n - 1] = Pnm_m1[n - 1];
       Pnm_m1[n - 1] = P_n_m;
       mphi = (double) (n - 1) * phi;
-      rad_val =
-          (shcoeffs_byshape[sht][loc] * cos(mphi) - shcoeffs_byshape[sht][loc + 1] * sin(mphi)) *
-          2.0 * P_n_m;
+      rad_val = (shcoeffs_byshape[sht][loc] * cos(mphi) - shcoeffs_byshape[sht][loc + 1] * sin(mphi)) * 2.0 * P_n_m;
       y = rad_val - c;
       t = ksum + y;
-      c = (t - ksum) - y;
+      c = (t - ksum) -y;
       ksum = t;
-      rad_dphi -=
-          (shcoeffs_byshape[sht][loc] * sin(mphi) + shcoeffs_byshape[sht][loc + 1] * cos(mphi)) *
-          2.0 * P_n_m * (double) (n - 1);
-      fnm = std::sqrt((2.0 * double(n) + 1.0) / (MY_4PI * MathSpecial::factorial(2 * n - 1)));
-      rad_dtheta += 2.0 * (fnm / st) *
-          ((double(n + 1) * x_val * pow(-1, n - 1) * std::assoc_legendre(n, n - 1, x_val)) -
-           (2.0 * pow(-1, n - 1) * std::assoc_legendre(n + 1, n - 1, x_val))) *
-          ((shcoeffs_byshape[sht][loc + 1] * sin(mphi)) - (shcoeffs_byshape[sht][loc] * cos(mphi)));
+      rad_dphi -= (shcoeffs_byshape[sht][loc] * sin(mphi) + shcoeffs_byshape[sht][loc + 1] * cos(mphi)) * 2.0 * P_n_m *
+              (double) (n-1);
+      fnm = std::sqrt((2.0*double(n)+1.0)/(MY_4PI*MathSpecial::factorial(2*n-1)));
+      rad_dtheta += 2.0*(fnm/st)*((double(n+1)*x_val*plgndr(n,n-1,x_val))-(2.0*plgndr(n+1, n-1, x_val)))*
+                    ((shcoeffs_byshape[sht][loc+1]*sin(mphi))-(shcoeffs_byshape[sht][loc] * cos(mphi)));
       loc -= 2;
 
       // m = n
@@ -1242,21 +1015,16 @@ double AtomVecSpherharm::get_shape_radius_and_normal_compensated(int sht, double
       Pnm_nn = P_n_m;
       Pnm_m1[n] = P_n_m;
       mphi = (double) n * phi;
-      rad_val =
-          (shcoeffs_byshape[sht][loc] * cos(mphi) - shcoeffs_byshape[sht][loc + 1] * sin(mphi)) *
-          2.0 * P_n_m;
+      rad_val = (shcoeffs_byshape[sht][loc] * cos(mphi) - shcoeffs_byshape[sht][loc + 1] * sin(mphi)) * 2.0 * P_n_m;
       y = rad_val - c;
       t = ksum + y;
-      c = (t - ksum) - y;
+      c = (t - ksum) -y;
       ksum = t;
-      rad_dphi -=
-          (shcoeffs_byshape[sht][loc] * sin(mphi) + shcoeffs_byshape[sht][loc + 1] * cos(mphi)) *
-          2.0 * P_n_m * (double) n;
-      fnm = std::sqrt((2.0 * double(n) + 1.0) / (MY_4PI * MathSpecial::factorial(2 * n)));
-      rad_dtheta += 2.0 * (fnm / st) *
-          ((double(n + 1) * x_val * pow(-1, n) * std::assoc_legendre(n, n, x_val)) -
-           (pow(-1, n) * std::assoc_legendre(n + 1, n, x_val))) *
-          ((shcoeffs_byshape[sht][loc + 1] * sin(mphi)) - (shcoeffs_byshape[sht][loc] * cos(mphi)));
+      rad_dphi -= (shcoeffs_byshape[sht][loc] * sin(mphi) + shcoeffs_byshape[sht][loc + 1] * cos(mphi)) * 2.0 * P_n_m *
+              (double) n;
+      fnm = std::sqrt((2.0*double(n)+1.0)/(MY_4PI*MathSpecial::factorial(2*n)));
+      rad_dtheta += 2.0*(fnm/st)*((double(n+1)*x_val*plgndr(n,n,x_val))-(plgndr(n+1, n, x_val)))*
+                    ((shcoeffs_byshape[sht][loc+1]*sin(mphi))-(shcoeffs_byshape[sht][loc] * cos(mphi)));
     }
   }
 
@@ -1270,12 +1038,10 @@ double AtomVecSpherharm::get_shape_radius_and_normal_compensated(int sht, double
   Given a shape and a spherical coordinate (value of theta and phi), return
   the radius at the maximum degree of spherical harmonic expansion.
 ------------------------------------------------------------------------- */
-double AtomVecSpherharm::get_shape_radius_and_normal(double theta, double phi, double rnorm[3],
-                                                     const double *coeffs)
-{
+double AtomVecSpherharm::get_shape_radius_and_normal(double theta, double phi, double rnorm[3], const double *coeffs) {
 
   int n, nloc, loc;
-  double P_n_m, x_val, mphi, Pnm_nn, fnm, st, norm_fact;
+  double P_n_m, x_val, mphi, Pnm_nn, fnm, st;
   std::vector<double> Pnm_m2, Pnm_m1;
 
   fnm = std::sqrt(1.0 / MY_4PI);
@@ -1283,84 +1049,52 @@ double AtomVecSpherharm::get_shape_radius_and_normal(double theta, double phi, d
   double rad_dphi, rad_dtheta;
   rad_dphi = rad_dtheta = 0.0;
 
-  Pnm_m2.resize(maxshexpan + 1, 0.0);
-  Pnm_m1.resize(maxshexpan + 1, 0.0);
+  Pnm_m2.resize(maxshexpan+1, 0.0);
+  Pnm_m1.resize(maxshexpan+1, 0.0);
 
-  if (sin(theta) == 0.0)
-    theta += EPSILON;    // otherwise dividing by sin(theta) for gradients will not work
-  if (sin(phi) == 0.0) phi += EPSILON;    // To be consistent...
+  if (sin(theta) == 0.0) theta += EPSILON; // otherwise dividing by sin(theta) for gradients will not work
+  if (sin(phi) == 0.0) phi += EPSILON; // To be consistent...
   x_val = std::cos(theta);
   st = std::sin(theta);
 
-  for (n = 1; n <= maxshexpan; n++) {
+  for (n=1; n<=maxshexpan; n++){
     nloc = n * (n + 1);
 
     // n=1
     if (n == 1) {
       // n=1, m=0
-      // P_n_m = plegendre(1, 0, x_val);
-      norm_fact = pow(-1, 0) *
-          std::sqrt(((2 * 1 + 1) * MathSpecial::factorial(1 - 0)) /
-                    (MY_4PI * MathSpecial::factorial(1 + 0)));
-      P_n_m = std::assoc_legendre(1, 0, x_val) * norm_fact;
-
+      P_n_m = plegendre(1, 0, x_val);
       Pnm_m2[0] = P_n_m;
       rad_val += coeffs[4] * P_n_m;
       fnm = std::sqrt(3.0 / MY_4PI);
-      rad_dtheta -= (coeffs[4] * fnm / st) *
-          ((2.0 * x_val * pow(-1, 0) * std::assoc_legendre(1, 0, x_val)) -
-           (2.0 * pow(-1, 0) * std::assoc_legendre(2, 0, x_val)));
+      rad_dtheta -= (coeffs[4]*fnm/st)*((2.0*x_val*plgndr(1,0,x_val))-(2.0*plgndr(2, 0, x_val)));
       // n=1, m=1
-      // P_n_m = plegendre(1, 1, x_val);
-      norm_fact = pow(-1, 1) *
-          std::sqrt(((2 * 1 + 1) * MathSpecial::factorial(1 - 1)) /
-                    (MY_4PI * MathSpecial::factorial(1 + 1)));
-      P_n_m = std::assoc_legendre(1, 1, x_val) * norm_fact;
-
+      P_n_m = plegendre(1, 1, x_val);
       Pnm_m2[1] = P_n_m;
       mphi = 1.0 * phi;
       rad_val += (coeffs[2] * cos(mphi) - coeffs[3] * sin(mphi)) * 2.0 * P_n_m;
       rad_dphi -= (coeffs[2] * sin(mphi) + coeffs[3] * cos(mphi)) * 2.0 * P_n_m;
       fnm = std::sqrt(3.0 / (2.0 * MY_4PI));
-      rad_dtheta += 2.0 * (fnm / st) *
-          ((2.0 * x_val * pow(-1, 1) * std::assoc_legendre(1, 1, x_val)) -
-           (pow(-1, 1) * std::assoc_legendre(2, 1, x_val))) *
-          ((coeffs[3] * sin(mphi)) - (coeffs[2] * cos(mphi)));
+      rad_dtheta += 2.0*(fnm/st)*((2.0*x_val*plgndr(1,1,x_val))-(plgndr(2, 1, x_val)))*
+                    ((coeffs[3]*sin(mphi))-(coeffs[2] * cos(mphi))) ;
       // n = 2
     } else if (n == 2) {
       // n=2, m=0
-      // P_n_m = plegendre(2, 0, x_val);
-      norm_fact = pow(-1, 0) *
-          std::sqrt(((2 * 2 + 1) * MathSpecial::factorial(2 - 0)) /
-                    (MY_4PI * MathSpecial::factorial(2 + 0)));
-      P_n_m = std::assoc_legendre(2, 0, x_val) * norm_fact;
-
+      P_n_m = plegendre(2, 0, x_val);
       Pnm_m1[0] = P_n_m;
       rad_val += coeffs[10] * P_n_m;
       fnm = std::sqrt(5.0 / MY_4PI);
-      rad_dtheta -= (coeffs[10] * fnm / st) *
-          ((3.0 * x_val * pow(-1, 0) * std::assoc_legendre(2, 0, x_val)) -
-           (3.0 * pow(-1, 0) * std::assoc_legendre(3, 0, x_val)));
+      rad_dtheta -= (coeffs[10]*fnm / st)*((3.0*x_val*plgndr(2,0,x_val))-(3.0*plgndr(3, 0, x_val)));
       // n=2 2>=m>0
       for (int m = 2; m >= 1; m--) {
-        // P_n_m = plegendre(2, m, x_val);
-
-        norm_fact = pow(-1, m) *
-            std::sqrt(((2 * 2 + 1) * MathSpecial::factorial(2 - m)) /
-                      (MY_4PI * MathSpecial::factorial(2 + m)));
-        P_n_m = std::assoc_legendre(2, m, x_val) * norm_fact;
-
+        P_n_m = plegendre(2, m, x_val);
         Pnm_m1[m] = P_n_m;
         mphi = (double) m * phi;
         rad_val += (coeffs[nloc] * cos(mphi) - coeffs[nloc + 1] * sin(mphi)) * 2.0 * P_n_m;
-        rad_dphi -=
-            (coeffs[nloc] * sin(mphi) + coeffs[nloc + 1] * cos(mphi)) * 2.0 * P_n_m * (double) m;
-        fnm = std::sqrt((2.0 * double(n) + 1.0) * MathSpecial::factorial(n - m) /
-                        (MY_4PI * MathSpecial::factorial(n + m)));
-        rad_dtheta += 2.0 * (fnm / st) *
-            ((double(n + 1) * x_val * pow(-1, m) * std::assoc_legendre(n, m, x_val)) -
-             (double(n - m + 1) * pow(-1, m) * std::assoc_legendre(n + 1, m, x_val))) *
-            ((coeffs[nloc + 1] * sin(mphi)) - (coeffs[nloc] * cos(mphi)));
+        rad_dphi -= (coeffs[nloc] * sin(mphi) + coeffs[nloc + 1] * cos(mphi)) * 2.0 * P_n_m * (double) m;
+        fnm = std::sqrt((2.0*double(n)+1.0)*MathSpecial::factorial(n-m)/(MY_4PI*MathSpecial::factorial(n+m)));
+        rad_dtheta += 2.0*(fnm/st)*((double(n+1)*x_val*plgndr(n,m,x_val))-(double(n-m+1)*plgndr(n+1, m, x_val)))*
+                      ((coeffs[nloc+1]*sin(mphi))-(coeffs[nloc] * cos(mphi)));
         nloc += 2;
       }
       Pnm_nn = Pnm_m1[2];
@@ -1372,10 +1106,9 @@ double AtomVecSpherharm::get_shape_radius_and_normal(double theta, double phi, d
       Pnm_m1[0] = P_n_m;
       loc = (n + 1) * (n + 2) - 2;
       rad_val += coeffs[loc] * P_n_m;
-      fnm = std::sqrt((2.0 * double(n) + 1.0) / (MY_4PI));
-      rad_dtheta -= (coeffs[loc] * fnm / st) *
-          ((double(n + 1) * x_val * pow(-1, 0) * std::assoc_legendre(n, 0, x_val)) -
-           (double(n + 1) * pow(-1, 0) * std::assoc_legendre(n + 1, 0, x_val)));
+      fnm = std::sqrt((2.0*double(n)+1.0)/(MY_4PI));
+      rad_dtheta -= (coeffs[loc]*fnm / st)*
+                    ((double(n+1)*x_val*plgndr(n,0,x_val))-(double(n+1)*plgndr(n+1, 0, x_val)));
 
       loc -= 2;
       for (int m = 1; m < n - 1; m++) {
@@ -1384,14 +1117,10 @@ double AtomVecSpherharm::get_shape_radius_and_normal(double theta, double phi, d
         Pnm_m1[m] = P_n_m;
         mphi = (double) m * phi;
         rad_val += (coeffs[loc] * cos(mphi) - coeffs[loc + 1] * sin(mphi)) * 2.0 * P_n_m;
-        rad_dphi -=
-            (coeffs[loc] * sin(mphi) + coeffs[loc + 1] * cos(mphi)) * 2.0 * P_n_m * (double) m;
-        fnm = std::sqrt((2.0 * double(n) + 1.0) * MathSpecial::factorial(n - m) /
-                        (MY_4PI * MathSpecial::factorial(n + m)));
-        rad_dtheta += 2.0 * (fnm / st) *
-            ((double(n + 1) * x_val * pow(-1, m) * std::assoc_legendre(n, m, x_val)) -
-             (double(n - m + 1) * pow(-1, m) * std::assoc_legendre(n + 1, m, x_val))) *
-            ((coeffs[loc + 1] * sin(mphi)) - (coeffs[loc] * cos(mphi)));
+        rad_dphi -= (coeffs[loc] * sin(mphi) + coeffs[loc + 1] * cos(mphi)) * 2.0 * P_n_m * (double) m;
+        fnm = std::sqrt((2.0*double(n)+1.0)*MathSpecial::factorial(n-m)/(MY_4PI*MathSpecial::factorial(n+m)));
+        rad_dtheta += 2.0*(fnm/st)*((double(n+1)*x_val*plgndr(n,m,x_val))-(double(n-m+1)*plgndr(n+1, m, x_val)))*
+                      ((coeffs[loc+1]*sin(mphi))-(coeffs[loc] * cos(mphi)));
         loc -= 2;
       }
 
@@ -1401,13 +1130,10 @@ double AtomVecSpherharm::get_shape_radius_and_normal(double theta, double phi, d
       Pnm_m1[n - 1] = P_n_m;
       mphi = (double) (n - 1) * phi;
       rad_val += (coeffs[loc] * cos(mphi) - coeffs[loc + 1] * sin(mphi)) * 2.0 * P_n_m;
-      rad_dphi -=
-          (coeffs[loc] * sin(mphi) + coeffs[loc + 1] * cos(mphi)) * 2.0 * P_n_m * (double) (n - 1);
-      fnm = std::sqrt((2.0 * double(n) + 1.0) / (MY_4PI * MathSpecial::factorial(2 * n - 1)));
-      rad_dtheta += 2.0 * (fnm / st) *
-          ((double(n + 1) * x_val * pow(-1, n - 1) * std::assoc_legendre(n, n - 1, x_val)) -
-           (2.0 * pow(-1, n - 1) * std::assoc_legendre(n + 1, n - 1, x_val))) *
-          ((coeffs[loc + 1] * sin(mphi)) - (coeffs[loc] * cos(mphi)));
+      rad_dphi -= (coeffs[loc] * sin(mphi) + coeffs[loc + 1] * cos(mphi)) * 2.0 * P_n_m * (double) (n-1);
+      fnm = std::sqrt((2.0*double(n)+1.0)/(MY_4PI*MathSpecial::factorial(2*n-1)));
+      rad_dtheta += 2.0*(fnm/st)*((double(n+1)*x_val*plgndr(n,n-1,x_val))-(2.0*plgndr(n+1, n-1, x_val)))*
+                    ((coeffs[loc+1]*sin(mphi))-(coeffs[loc] * cos(mphi)));
       loc -= 2;
 
       // m = n
@@ -1416,13 +1142,10 @@ double AtomVecSpherharm::get_shape_radius_and_normal(double theta, double phi, d
       Pnm_m1[n] = P_n_m;
       mphi = (double) n * phi;
       rad_val += (coeffs[loc] * cos(mphi) - coeffs[loc + 1] * sin(mphi)) * 2.0 * P_n_m;
-      rad_dphi -=
-          (coeffs[loc] * sin(mphi) + coeffs[loc + 1] * cos(mphi)) * 2.0 * P_n_m * (double) n;
-      fnm = std::sqrt((2.0 * double(n) + 1.0) / (MY_4PI * MathSpecial::factorial(2 * n)));
-      rad_dtheta += 2.0 * (fnm / st) *
-          ((double(n + 1) * x_val * pow(-1, n) * std::assoc_legendre(n, n, x_val)) -
-           (pow(-1, n) * std::assoc_legendre(n + 1, n, x_val))) *
-          ((coeffs[loc + 1] * sin(mphi)) - (coeffs[loc] * cos(mphi)));
+      rad_dphi -= (coeffs[loc] * sin(mphi) + coeffs[loc + 1] * cos(mphi)) * 2.0 * P_n_m * (double) n;
+      fnm = std::sqrt((2.0*double(n)+1.0)/(MY_4PI*MathSpecial::factorial(2*n)));
+      rad_dtheta += 2.0*(fnm/st)*((double(n+1)*x_val*plgndr(n,n,x_val))-(plgndr(n+1, n, x_val)))*
+                    ((coeffs[loc+1]*sin(mphi))-(coeffs[loc] * cos(mphi)));
     }
   }
 
@@ -1436,104 +1159,67 @@ double AtomVecSpherharm::get_shape_radius_and_normal(double theta, double phi, d
   the radius at the maximum degree of spherical harmonic expansion and its
   gradients in theta and phi.
 ------------------------------------------------------------------------- */
-double AtomVecSpherharm::get_shape_radius_and_gradients(int sht, double theta, double phi,
-                                                        double &rad_dphi, double &rad_dtheta)
-{
+double AtomVecSpherharm::get_shape_radius_and_gradients(int sht, double theta, double phi, double &rad_dphi,
+                                                        double &rad_dtheta) {
 
   int n, nloc, loc;
-  double P_n_m, x_val, mphi, Pnm_nn, fnm, st, norm_fact;
+  double P_n_m, x_val, mphi, Pnm_nn, fnm, st;
   std::vector<double> Pnm_m2, Pnm_m1;
 
   fnm = std::sqrt(1.0 / MY_4PI);
   double rad_val = shcoeffs_byshape[sht][0] * fnm;
   rad_dphi = rad_dtheta = 0.0;
 
-  Pnm_m2.resize(maxshexpan + 1, 0.0);
-  Pnm_m1.resize(maxshexpan + 1, 0.0);
+  Pnm_m2.resize(maxshexpan+1, 0.0);
+  Pnm_m1.resize(maxshexpan+1, 0.0);
 
-  if (sin(theta) == 0.0)
-    theta += EPSILON;    // otherwise dividing by sin(theta) for gradients will not work
-  if (sin(phi) == 0.0) phi += EPSILON;    // To be consistent...
+  if (sin(theta) == 0.0) theta += EPSILON; // otherwise dividing by sin(theta) for gradients will not work
+  if (sin(phi) == 0.0) phi += EPSILON; // To be consistent...
   x_val = std::cos(theta);
   st = std::sin(theta);
 
-  for (n = 1; n <= maxshexpan; n++) {
+  for (n=1; n<=maxshexpan; n++){
     nloc = n * (n + 1);
 
     // n=1
     if (n == 1) {
       // n=1, m=0
-      // P_n_m = plegendre(1, 0, x_val);
-
-      norm_fact = pow(-1, 0) *
-          std::sqrt(((2 * 1 + 1) * MathSpecial::factorial(1 - 0)) /
-                    (MY_4PI * MathSpecial::factorial(1 + 0)));
-      P_n_m = std::assoc_legendre(1, 0, x_val) * norm_fact;
-
+      P_n_m = plegendre(1, 0, x_val);
       Pnm_m2[0] = P_n_m;
       rad_val += shcoeffs_byshape[sht][4] * P_n_m;
       fnm = std::sqrt(3.0 / MY_4PI);
-      rad_dtheta -= (shcoeffs_byshape[sht][4] * fnm / st) *
-          ((2.0 * x_val * pow(-1, 0) * std::assoc_legendre(1, 0, x_val)) -
-           (2.0 * pow(-1, 0) * std::assoc_legendre(2, 0, x_val)));
+      rad_dtheta -= (shcoeffs_byshape[sht][4]*fnm/st)*((2.0*x_val*plgndr(1,0,x_val))-
+              (2.0*plgndr(2, 0, x_val)));
       // n=1, m=1
-      // P_n_m = plegendre(1, 1, x_val);
-      norm_fact = pow(-1, 1) *
-          std::sqrt(((2 * 1 + 1) * MathSpecial::factorial(1 - 1)) /
-                    (MY_4PI * MathSpecial::factorial(1 + 1)));
-      P_n_m = std::assoc_legendre(1, 1, x_val) * norm_fact;
-
+      P_n_m = plegendre(1, 1, x_val);
       Pnm_m2[1] = P_n_m;
       mphi = 1.0 * phi;
-      rad_val += (shcoeffs_byshape[sht][2] * cos(mphi) - shcoeffs_byshape[sht][3] * sin(mphi)) *
-          2.0 * P_n_m;
-      rad_dphi -= (shcoeffs_byshape[sht][2] * sin(mphi) + shcoeffs_byshape[sht][3] * cos(mphi)) *
-          2.0 * P_n_m;
+      rad_val += (shcoeffs_byshape[sht][2] * cos(mphi) - shcoeffs_byshape[sht][3] * sin(mphi)) * 2.0 * P_n_m;
+      rad_dphi -= (shcoeffs_byshape[sht][2] * sin(mphi) + shcoeffs_byshape[sht][3] * cos(mphi)) * 2.0 * P_n_m;
       fnm = std::sqrt(3.0 / (2.0 * MY_4PI));
-      rad_dtheta += 2.0 * (fnm / st) *
-          ((2.0 * x_val * pow(-1, 1) * std::assoc_legendre(1, 1, x_val)) -
-           (pow(-1, 1) * std::assoc_legendre(2, 1, x_val))) *
-          ((shcoeffs_byshape[sht][3] * sin(mphi)) - (shcoeffs_byshape[sht][2] * cos(mphi)));
+      rad_dtheta += 2.0*(fnm/st)*((2.0*x_val*plgndr(1,1,x_val))-(plgndr(2, 1, x_val)))*
+                    ((shcoeffs_byshape[sht][3]*sin(mphi))-(shcoeffs_byshape[sht][2] * cos(mphi))) ;
       // n = 2
     } else if (n == 2) {
       // n=2, m=0
-      // P_n_m = plegendre(2, 0, x_val);
-
-      norm_fact = pow(-1, 0) *
-          std::sqrt(((2 * 2 + 1) * MathSpecial::factorial(2 - 0)) /
-                    (MY_4PI * MathSpecial::factorial(2 + 0)));
-      P_n_m = std::assoc_legendre(2, 0, x_val) * norm_fact;
-
+      P_n_m = plegendre(2, 0, x_val);
       Pnm_m1[0] = P_n_m;
       rad_val += shcoeffs_byshape[sht][10] * P_n_m;
       fnm = std::sqrt(5.0 / MY_4PI);
-      rad_dtheta -= (shcoeffs_byshape[sht][10] * fnm / st) *
-          ((3.0 * x_val * pow(-1, 0) * std::assoc_legendre(2, 0, x_val)) -
-           (3.0 * pow(-1, 0) * std::assoc_legendre(3, 0, x_val)));
+      rad_dtheta -= (shcoeffs_byshape[sht][10]*fnm / st)*((3.0*x_val*plgndr(2,0,x_val))-
+              (3.0*plgndr(3, 0, x_val)));
       // n=2 2>=m>0
       for (int m = 2; m >= 1; m--) {
-        // P_n_m = plegendre(2, m, x_val);
-
-        norm_fact = pow(-1, m) *
-            std::sqrt(((2 * 2 + 1) * MathSpecial::factorial(2 - m)) /
-                      (MY_4PI * MathSpecial::factorial(2 + m)));
-        P_n_m = std::assoc_legendre(2, m, x_val) * norm_fact;
-
+        P_n_m = plegendre(2, m, x_val);
         Pnm_m1[m] = P_n_m;
         mphi = (double) m * phi;
-        rad_val += (shcoeffs_byshape[sht][nloc] * cos(mphi) -
-                    shcoeffs_byshape[sht][nloc + 1] * sin(mphi)) *
-            2.0 * P_n_m;
-        rad_dphi -= (shcoeffs_byshape[sht][nloc] * sin(mphi) +
-                     shcoeffs_byshape[sht][nloc + 1] * cos(mphi)) *
-            2.0 * P_n_m * (double) m;
-        fnm = std::sqrt((2.0 * double(n) + 1.0) * MathSpecial::factorial(n - m) /
-                        (MY_4PI * MathSpecial::factorial(n + m)));
-        rad_dtheta += 2.0 * (fnm / st) *
-            ((double(n + 1) * x_val * pow(-1, m) * std::assoc_legendre(n, m, x_val)) -
-             (double(n - m + 1) * pow(-1, m) * std::assoc_legendre(n + 1, m, x_val))) *
-            ((shcoeffs_byshape[sht][nloc + 1] * sin(mphi)) -
-             (shcoeffs_byshape[sht][nloc] * cos(mphi)));
+        rad_val += (shcoeffs_byshape[sht][nloc] * cos(mphi) - shcoeffs_byshape[sht][nloc + 1] * sin(mphi)) * 2.0 *
+                P_n_m;
+        rad_dphi -= (shcoeffs_byshape[sht][nloc] * sin(mphi) + shcoeffs_byshape[sht][nloc + 1] * cos(mphi)) * 2.0 *
+                P_n_m * (double) m;
+        fnm = std::sqrt((2.0*double(n)+1.0)*MathSpecial::factorial(n-m)/(MY_4PI*MathSpecial::factorial(n+m)));
+        rad_dtheta += 2.0*(fnm/st)*((double(n+1)*x_val*plgndr(n,m,x_val))-(double(n-m+1)*plgndr(n+1, m, x_val)))*
+                      ((shcoeffs_byshape[sht][nloc+1]*sin(mphi))-(shcoeffs_byshape[sht][nloc] * cos(mphi)));
         nloc += 2;
       }
       Pnm_nn = Pnm_m1[2];
@@ -1545,10 +1231,9 @@ double AtomVecSpherharm::get_shape_radius_and_gradients(int sht, double theta, d
       Pnm_m1[0] = P_n_m;
       loc = (n + 1) * (n + 2) - 2;
       rad_val += shcoeffs_byshape[sht][loc] * P_n_m;
-      fnm = std::sqrt((2.0 * double(n) + 1.0) / (MY_4PI));
-      rad_dtheta -= (shcoeffs_byshape[sht][loc] * fnm / st) *
-          ((double(n + 1) * x_val * pow(-1, 0) * std::assoc_legendre(n, 0, x_val)) -
-           (double(n + 1) * pow(-1, 0) * std::assoc_legendre(n + 1, 0, x_val)));
+      fnm = std::sqrt((2.0*double(n)+1.0)/(MY_4PI));
+      rad_dtheta -= (shcoeffs_byshape[sht][loc]*fnm / st)*
+                    ((double(n+1)*x_val*plgndr(n,0,x_val))-(double(n+1)*plgndr(n+1, 0, x_val)));
 
       loc -= 2;
       for (int m = 1; m < n - 1; m++) {
@@ -1556,19 +1241,12 @@ double AtomVecSpherharm::get_shape_radius_and_gradients(int sht, double theta, d
         Pnm_m2[m] = Pnm_m1[m];
         Pnm_m1[m] = P_n_m;
         mphi = (double) m * phi;
-        rad_val +=
-            (shcoeffs_byshape[sht][loc] * cos(mphi) - shcoeffs_byshape[sht][loc + 1] * sin(mphi)) *
-            2.0 * P_n_m;
-        rad_dphi -=
-            (shcoeffs_byshape[sht][loc] * sin(mphi) + shcoeffs_byshape[sht][loc + 1] * cos(mphi)) *
-            2.0 * P_n_m * (double) m;
-        fnm = std::sqrt((2.0 * double(n) + 1.0) * MathSpecial::factorial(n - m) /
-                        (MY_4PI * MathSpecial::factorial(n + m)));
-        rad_dtheta += 2.0 * (fnm / st) *
-            ((double(n + 1) * x_val * pow(-1, m) * std::assoc_legendre(n, m, x_val)) -
-             (double(n - m + 1) * pow(-1, m) * std::assoc_legendre(n + 1, m, x_val))) *
-            ((shcoeffs_byshape[sht][loc + 1] * sin(mphi)) -
-             (shcoeffs_byshape[sht][loc] * cos(mphi)));
+        rad_val += (shcoeffs_byshape[sht][loc] * cos(mphi) - shcoeffs_byshape[sht][loc + 1] * sin(mphi)) * 2.0 * P_n_m;
+        rad_dphi -= (shcoeffs_byshape[sht][loc] * sin(mphi) + shcoeffs_byshape[sht][loc + 1] * cos(mphi)) * 2.0 *
+                P_n_m * (double) m;
+        fnm = std::sqrt((2.0*double(n)+1.0)*MathSpecial::factorial(n-m)/(MY_4PI*MathSpecial::factorial(n+m)));
+        rad_dtheta += 2.0*(fnm/st)*((double(n+1)*x_val*plgndr(n,m,x_val))-(double(n-m+1)*plgndr(n+1, m, x_val)))*
+                      ((shcoeffs_byshape[sht][loc+1]*sin(mphi))-(shcoeffs_byshape[sht][loc] * cos(mphi)));
         loc -= 2;
       }
 
@@ -1577,17 +1255,12 @@ double AtomVecSpherharm::get_shape_radius_and_gradients(int sht, double theta, d
       Pnm_m2[n - 1] = Pnm_m1[n - 1];
       Pnm_m1[n - 1] = P_n_m;
       mphi = (double) (n - 1) * phi;
-      rad_val +=
-          (shcoeffs_byshape[sht][loc] * cos(mphi) - shcoeffs_byshape[sht][loc + 1] * sin(mphi)) *
-          2.0 * P_n_m;
-      rad_dphi -=
-          (shcoeffs_byshape[sht][loc] * sin(mphi) + shcoeffs_byshape[sht][loc + 1] * cos(mphi)) *
-          2.0 * P_n_m * (double) (n - 1);
-      fnm = std::sqrt((2.0 * double(n) + 1.0) / (MY_4PI * MathSpecial::factorial(2 * n - 1)));
-      rad_dtheta += 2.0 * (fnm / st) *
-          ((double(n + 1) * x_val * pow(-1, n - 1) * std::assoc_legendre(n, n - 1, x_val)) -
-           (2.0 * pow(-1, n - 1) * std::assoc_legendre(n + 1, n - 1, x_val))) *
-          ((shcoeffs_byshape[sht][loc + 1] * sin(mphi)) - (shcoeffs_byshape[sht][loc] * cos(mphi)));
+      rad_val += (shcoeffs_byshape[sht][loc] * cos(mphi) - shcoeffs_byshape[sht][loc + 1] * sin(mphi)) * 2.0 * P_n_m;
+      rad_dphi -= (shcoeffs_byshape[sht][loc] * sin(mphi) + shcoeffs_byshape[sht][loc + 1] * cos(mphi)) * 2.0 * P_n_m *
+              (double) (n-1);
+      fnm = std::sqrt((2.0*double(n)+1.0)/(MY_4PI*MathSpecial::factorial(2*n-1)));
+      rad_dtheta += 2.0*(fnm/st)*((double(n+1)*x_val*plgndr(n,n-1,x_val))-(2.0*plgndr(n+1, n-1, x_val)))*
+                    ((shcoeffs_byshape[sht][loc+1]*sin(mphi))-(shcoeffs_byshape[sht][loc] * cos(mphi)));
       loc -= 2;
 
       // m = n
@@ -1595,17 +1268,12 @@ double AtomVecSpherharm::get_shape_radius_and_gradients(int sht, double theta, d
       Pnm_nn = P_n_m;
       Pnm_m1[n] = P_n_m;
       mphi = (double) n * phi;
-      rad_val +=
-          (shcoeffs_byshape[sht][loc] * cos(mphi) - shcoeffs_byshape[sht][loc + 1] * sin(mphi)) *
-          2.0 * P_n_m;
-      rad_dphi -=
-          (shcoeffs_byshape[sht][loc] * sin(mphi) + shcoeffs_byshape[sht][loc + 1] * cos(mphi)) *
-          2.0 * P_n_m * (double) n;
-      fnm = std::sqrt((2.0 * double(n) + 1.0) / (MY_4PI * MathSpecial::factorial(2 * n)));
-      rad_dtheta += 2.0 * (fnm / st) *
-          ((double(n + 1) * x_val * pow(-1, n) * std::assoc_legendre(n, n, x_val)) -
-           (pow(-1, n) * std::assoc_legendre(n + 1, n, x_val))) *
-          ((shcoeffs_byshape[sht][loc + 1] * sin(mphi)) - (shcoeffs_byshape[sht][loc] * cos(mphi)));
+      rad_val += (shcoeffs_byshape[sht][loc] * cos(mphi) - shcoeffs_byshape[sht][loc + 1] * sin(mphi)) * 2.0 * P_n_m;
+      rad_dphi -= (shcoeffs_byshape[sht][loc] * sin(mphi) + shcoeffs_byshape[sht][loc + 1] * cos(mphi)) * 2.0 * P_n_m *
+              (double) n;
+      fnm = std::sqrt((2.0*double(n)+1.0)/(MY_4PI*MathSpecial::factorial(2*n)));
+      rad_dtheta += 2.0*(fnm/st)*((double(n+1)*x_val*plgndr(n,n,x_val))-(plgndr(n+1, n, x_val)))*
+                    ((shcoeffs_byshape[sht][loc+1]*sin(mphi))-(shcoeffs_byshape[sht][loc] * cos(mphi)));
     }
   }
 
@@ -1628,25 +1296,10 @@ void AtomVecSpherharm::get_normal(double theta, double phi, double r, double rp,
   sp = std::sin(phi);
   cp = std::cos(phi);
 
-  // uncomment for unit surface normal
-  //  sfac = r * std::sqrt((rp*rp)+(rt*rt*st*st)+(r*r*st*st));
 
   rnorm[0] = r * ((cp * r * st * st) + (sp * rp) - (cp * ct * st * rt));
   rnorm[1] = r * ((r * sp * st * st) - (cp * rp) - (ct * sp * st * rt));
   rnorm[2] = r * st * ((ct * r) + (st * rt));
-
-  // uncomment for unit surface normal
-  //  denom = sqrt((rnorm[0]*rnorm[0]) +
-  //               (rnorm[1]*rnorm[1]) +
-  //               (rnorm[2]*rnorm[2]));
-  //
-  //  if (denom > 0.0) {
-  //    rnorm[0] /= denom;
-  //    rnorm[1] /= denom;
-  //    rnorm[2] /= denom;
-  //  } else {
-  //    error->all(FLERR,"Zero Unit normal vector");
-  //  }
 }
 
 /* ----------------------------------------------------------------------
@@ -1707,14 +1360,8 @@ void AtomVecSpherharm::dump_ply(int ii, int shape, int plycount, double irot[3][
   off[2] = offset[2];
 
   if (ii == 0) {
-    //    off[0] = 0.0;
-    //    off[1] = 0.0;
-    //    off[2] = 0.0;
     charin = 'A';
   } else {
-    //    off[0] = offset[0];
-    //    off[1] = offset[1];
-    //    off[2] = offset[2];
     charin = 'B';
   }
 

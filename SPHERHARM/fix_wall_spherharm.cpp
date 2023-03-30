@@ -68,8 +68,6 @@ FixWallSpherharm::FixWallSpherharm(LAMMPS *lmp, int narg, char **arg) :
   if (!atom->spherharm_flag)
     error->all(FLERR,"Fix wall/spherharm requires atom style spherharm");
 
-  //TODO - hardcoding the number of quadrature points is not a good idea here
-  // num_pole_quad = 40;
   create_attribute = 1;
   restart_peratom = 0;
 
@@ -87,7 +85,7 @@ FixWallSpherharm::FixWallSpherharm(LAMMPS *lmp, int narg, char **arg) :
   else tangcoeff = utils::numeric(FLERR, arg[5], false, lmp);
 
   if (kn < 0.0 || mexpon < 1.0 || tangcoeff < 0.0)
-    error->all(FLERR, "Illegal fix wall/gran command");
+    error->all(FLERR, "Illegal fix wall/spherharm command");
 
   iarg = 7;
 
@@ -96,7 +94,7 @@ FixWallSpherharm::FixWallSpherharm(LAMMPS *lmp, int narg, char **arg) :
   idregion = nullptr;
 
   if (strcmp(arg[iarg],"xplane") == 0) {
-    if (narg < iarg+3) error->all(FLERR,"Illegal fix wall/gran command");
+    if (narg < iarg+3) error->all(FLERR,"Illegal fix wall/spherharm command");
     wallstyle = XPLANE;
     if (strcmp(arg[iarg+1],"NULL") == 0) lo = -BIG;
     else lo = utils::numeric(FLERR,arg[iarg+1],false,lmp);
@@ -104,7 +102,7 @@ FixWallSpherharm::FixWallSpherharm(LAMMPS *lmp, int narg, char **arg) :
     else hi = utils::numeric(FLERR,arg[iarg+2],false,lmp);
     iarg += 3;
   } else if (strcmp(arg[iarg],"yplane") == 0) {
-    if (narg < iarg+3) error->all(FLERR,"Illegal fix wall/gran command");
+    if (narg < iarg+3) error->all(FLERR,"Illegal fix wall/spherharm command");
     wallstyle = YPLANE;
     if (strcmp(arg[iarg+1],"NULL") == 0) lo = -BIG;
     else lo = utils::numeric(FLERR,arg[iarg+1],false,lmp);
@@ -112,7 +110,7 @@ FixWallSpherharm::FixWallSpherharm(LAMMPS *lmp, int narg, char **arg) :
     else hi = utils::numeric(FLERR,arg[iarg+2],false,lmp);
     iarg += 3;
   } else if (strcmp(arg[iarg],"zplane") == 0) {
-    if (narg < iarg+3) error->all(FLERR,"Illegal fix wall/gran command");
+    if (narg < iarg+3) error->all(FLERR,"Illegal fix wall/spherharm command");
     wallstyle = ZPLANE;
     if (strcmp(arg[iarg+1],"NULL") == 0) lo = -BIG;
     else lo = utils::numeric(FLERR,arg[iarg+1],false,lmp);
@@ -120,13 +118,13 @@ FixWallSpherharm::FixWallSpherharm(LAMMPS *lmp, int narg, char **arg) :
     else hi = utils::numeric(FLERR,arg[iarg+2],false,lmp);
     iarg += 3;
   } else if (strcmp(arg[iarg],"zcylinder") == 0) {
-    if (narg < iarg+2) error->all(FLERR,"Illegal fix wall/gran command");
+    if (narg < iarg+2) error->all(FLERR,"Illegal fix wall/spherharm command");
     wallstyle = ZCYLINDER;
     lo = hi = 0.0;
     cylradius = utils::numeric(FLERR,arg[iarg+1],false,lmp);
     iarg += 2;
   } else if (strcmp(arg[iarg],"region") == 0) {
-    if (narg < iarg+2) error->all(FLERR,"Illegal fix wall/gran command");
+    if (narg < iarg+2) error->all(FLERR,"Illegal fix wall/spherharm command");
     wallstyle = REGION;
     int n = strlen(arg[iarg+1]) + 1;
     idregion = new char[n];
@@ -144,21 +142,21 @@ FixWallSpherharm::FixWallSpherharm(LAMMPS *lmp, int narg, char **arg) :
 
   while (iarg < narg) {
     if (strcmp(arg[iarg],"wiggle") == 0) {
-      if (iarg+4 > narg) error->all(FLERR,"Illegal fix wall/gran command");
+      if (iarg+4 > narg) error->all(FLERR,"Illegal fix wall/spherharm command");
       if (strcmp(arg[iarg+1],"x") == 0) axis = 0;
       else if (strcmp(arg[iarg+1],"y") == 0) axis = 1;
       else if (strcmp(arg[iarg+1],"z") == 0) axis = 2;
-      else error->all(FLERR,"Illegal fix wall/gran command");
+      else error->all(FLERR,"Illegal fix wall/spherharm command");
       amplitude = utils::numeric(FLERR,arg[iarg+2],false,lmp);
       period = utils::numeric(FLERR,arg[iarg+3],false,lmp);
       wiggle = 1;
       iarg += 4;
     } else if (strcmp(arg[iarg],"shear") == 0) {
-      if (iarg+3 > narg) error->all(FLERR,"Illegal fix wall/gran command");
+      if (iarg+3 > narg) error->all(FLERR,"Illegal fix wall/spherharm command");
       if (strcmp(arg[iarg+1],"x") == 0) axis = 0;
       else if (strcmp(arg[iarg+1],"y") == 0) axis = 1;
       else if (strcmp(arg[iarg+1],"z") == 0) axis = 2;
-      else error->all(FLERR,"Illegal fix wall/gran command");
+      else error->all(FLERR,"Illegal fix wall/spherharm command");
       vshear = utils::numeric(FLERR,arg[iarg+2],false,lmp);
       wshear = 1;
       iarg += 3;
@@ -173,7 +171,7 @@ FixWallSpherharm::FixWallSpherharm(LAMMPS *lmp, int narg, char **arg) :
       size_peratom_cols = 8;
       peratom_freq = 1;
       iarg += 1;
-    } else error->all(FLERR,"Illegal fix wall/gran command");
+    } else error->all(FLERR,"Illegal fix wall/spherharm command");
   }
 
   if (wallstyle == XPLANE && domain->xperiodic)
@@ -186,24 +184,23 @@ FixWallSpherharm::FixWallSpherharm(LAMMPS *lmp, int narg, char **arg) :
     error->all(FLERR,"Cannot use wall in periodic dimension");
 
   if (wiggle && wshear)
-    error->all(FLERR,"Cannot wiggle and shear fix wall/gran");
+    error->all(FLERR,"Cannot wiggle and shear fix wall/spherharm");
   if (wiggle && wallstyle == ZCYLINDER && axis != 2)
-    error->all(FLERR,"Invalid wiggle direction for fix wall/gran");
+    error->all(FLERR,"Invalid wiggle direction for fix wall/spherharm");
   if (wshear && wallstyle == XPLANE && axis == 0)
-    error->all(FLERR,"Invalid shear direction for fix wall/gran");
+    error->all(FLERR,"Invalid shear direction for fix wall/spherharm");
   if (wshear && wallstyle == YPLANE && axis == 1)
-    error->all(FLERR,"Invalid shear direction for fix wall/gran");
+    error->all(FLERR,"Invalid shear direction for fix wall/spherharm");
   if (wshear && wallstyle == ZPLANE && axis == 2)
-    error->all(FLERR,"Invalid shear direction for fix wall/gran");
+    error->all(FLERR,"Invalid shear direction for fix wall/spherharm");
   if ((wiggle || wshear) && wallstyle == REGION)
-    error->all(FLERR,"Cannot wiggle or shear with fix wall/gran/region");
+    error->all(FLERR,"Cannot wiggle or shear with fix wall/spherharm/region");
   
-  //if ((wtranslate || wscontrol) && (lo != -BIG && hi != BIG)) // added wscontrol [MO - 28 Aug 2015]
-   // error->all(FLERR,"Cannot specify both top and bottom walls and translate for fix wall/gran/oldstyle");
+
   if (wtranslate && wallstyle == ZCYLINDER) // added wscontrol [MO - 28 Aug 2015]
-    error->all(FLERR,"Cannot use translate with cylinder fix wall/gran/oldstyle");
+    error->all(FLERR,"Cannot use translate with cylinder fix wall/spherharm");
   if (wtranslate && (wiggle || wshear)) // added wscontrol [MO - 28 Aug 2015]
-    error->all(FLERR,"Cannot translate and wiggle or shear fix wall/gran/oldstyle");
+    error->all(FLERR,"Cannot translate and wiggle or shear fix wall/spherharm");
 
   // setup oscillations
 
@@ -334,19 +331,19 @@ void FixWallSpherharm::post_force(int /*vflag*/)
         del2 = whi - x[i][0];
         if (del1 < del2) dx = del1;
         else dx = -del2;
-        gamma = std::acos(std::abs(dx) /radi); //TODO removing extra angle required for time convergence...
+        gamma = std::acos(std::abs(dx) /radi); 
       } else if (wallstyle == YPLANE) {
         del1 = x[i][1] - wlo;
         del2 = whi - x[i][1];
         if (del1 < del2) dy = del1;
         else dy = -del2;
-        gamma = std::acos(std::abs(dy) /radi);// + (0.5 * MY_PI / 180.0);
+        gamma = std::acos(std::abs(dy) /radi);
       } else if (wallstyle == ZPLANE) {
         del1 = x[i][2] - wlo;
         del2 = whi - x[i][2];
         if (del1 < del2) dz = del1;
         else dz = -del2;
-        gamma = std::acos(std::abs(dz) /radi);// + (0.5 * MY_PI / 180.0);
+        gamma = std::acos(std::abs(dz) /radi);
       } else if (wallstyle == ZCYLINDER) {
         delxy = sqrt(x[i][0]*x[i][0] + x[i][1]*x[i][1]); // N.B. cylinder axis is at x=y=0.0
         delr = cylradius - delxy; // particle centre to cylinder radius
@@ -364,12 +361,7 @@ void FixWallSpherharm::post_force(int /*vflag*/)
           else{ // outside cylinder
             gamma = std::acos(delr /radi);
           }
-//          if (wshear && axis != 2) { // vshear is tangential in this case (see docs), split into x and y comps
-//            vwall[0] = vshear * x[i][1]/delxy; //TODO changed from += to +, makes no sense to double shear if axis = 0
-//                                               // or 1, see line 269
-//            vwall[1] = -vshear * x[i][0]/delxy;
-//            vwall[2] = 0.0;
-//          }
+
         }
       }
 
@@ -393,15 +385,7 @@ void FixWallSpherharm::post_force(int /*vflag*/)
         else
           contact = nullptr;
 
-        // TODO - Fix this for cylindrical boundaries
         if (pairstyle == VOLUME_BASED)
-
-
-          //std::cout.precision(dbl::max_digits10);
-          //std::cout.precision(std::numeric_limits<double>::digits10);
-          //std::cout << std::endl << dz << " ";
-          //std::cout << std::endl << dx << " ";
-          //std::cout << dx << " " <<MY_PI*(radi+dx)*(radi+dx)*(3.0*radi-(radi+dx))/3.0 << " ";
 
           vol_based(dx,dy,dz,gamma,ishtype,quat[i],x[i],f[i],torque[i],v[i],omegap[i],contact,maxrad,vwall);
       }
@@ -461,24 +445,17 @@ void FixWallSpherharm::vol_based(double dx, double dy, double dz, double iang,
   // Get the quaternion from north pole of atom "i" to the vector connecting the centre line of atom "i" to the wall
   MathSpherharm::get_contact_quat(delvec, iquat_cont);
 
-  //if (wallstyle != ZCYLINDER) {
-  //  candidates_found = refine_cap_angle_plane(kk_count, ishtype, iang, iquat_cont, iquat_sf_bf, x, delvec);
-  //}
-  //else{
-  //  candidates_found = refine_cap_angle_cylinder(kk_count, ishtype, iang, iquat_cont, iquat_sf_bf, x, delvec);
-  //}
 
   kk_count = num_pole_quad-1;
   candidates_found = true;
 
-  if (kk_count == num_pole_quad) kk_count = num_pole_quad-1; // don't refine if points on first layer
+  if (kk_count == num_pole_quad) kk_count = num_pole_quad-1;  
 
   if (candidates_found) {
 
     calc_force_torque(wall_type, ishtype, iang, iquat_cont, iquat_sf_bf, x,
                       irot,vol_overlap, iforce, torsum, delvec);
 
-    //std::cout << "Vol " << vol_overlap << std::endl;
 
     if (vol_overlap==0.0) return;
 
@@ -511,7 +488,6 @@ void FixWallSpherharm::vol_based(double dx, double dy, double dz, double iang,
         if (MathSpherharm::get_contact_point_cylinder(maxrad[ishtype], x, linenorm, line_origin, cp, cylradius, inside)){
           error->all(FLERR, "Error, Contact line does not intersect with bounding sphere or cylinder boundary");
         }
-        //std::cout << "CP "<< cp[0] << " "<< cp[1] << " "<< cp[2] << std::endl;
         vr[0] = -v[0]; // for cylinder this is [-v1, -v2, vw3-v3], cyl can only have z velocity
         vr[1] = -v[1];
         vr[2] = vwall[2]-v[2];
@@ -520,9 +496,6 @@ void FixWallSpherharm::vol_based(double dx, double dy, double dz, double iang,
       calc_velCoulomb_force_torque(ishtype, iforce, vr, omegaa, cp, x, iquat_sf_bf, tforce, ttorque);
       MathExtra::add3(f, tforce, f);
       MathExtra::add3(torque, ttorque, torque);
-
-      //std::cout << "Force  " << tforce[0] << " " << tforce[1] << " "<< tforce[2] << " " << std::endl;
-     // std::cout << "Torque " << ttorque[0] << " " << ttorque[1] << " "<< ttorque[2] << " " << std::endl << std::endl;
     }
 
     if (peratom_flag) {
@@ -532,14 +505,9 @@ void FixWallSpherharm::vol_based(double dx, double dy, double dz, double iang,
     }
 
     static int file_count = 0;
-//    avec->dump_ply(0,ishtype,file_count,irot,x);
     file_count++;
 
   }
-
-  //std::cout.precision(std::numeric_limits<double>::digits10);
-//  std::cout<<f[0]<<" "<<f[1]<<" "<<f[2]<<" "<<std::endl;
- // std::cout<<torque[0]<<" "<<torque[1]<<" "<<torque[2]<<" "<<std::endl;
 
 }
 
@@ -731,10 +699,6 @@ void FixWallSpherharm::calc_force_torque(const int wall_type, int ishtype, doubl
   MathExtra::qnormalize(quat);
   MathExtra::quat_to_mat(quat, rot_np_bf);
 
-//  std::cout << rot_np_sf[0][0] << " " << rot_np_sf[0][1] << " " << rot_np_sf[0][2] << std::endl;
-  //std::cout << rot_np_sf[1][0] << " " << rot_np_sf[1][1] << " " << rot_np_sf[1][2] << std::endl;
-  //std::cout << rot_np_sf[2][0] << " " << rot_np_sf[2][1] << " " << rot_np_sf[2][2] << std::endl;
-
   const int n = 2*(num_pole_quad-1);
   const int n4 = int(std::ceil(double(n)/4.0));
   const double cosang = std::cos(iang);
@@ -769,8 +733,7 @@ void FixWallSpherharm::calc_force_torque(const int wall_type, int ishtype, doubl
       MathExtra::add3(line_normal, xi, ix_sf); // space frame coord of surface point
       MathExtra::normalize3(line_normal, line_normal); // unit line normal
 
-      // Particle-wall intersection defined in header file depending on wall type, skip quad point if problem with
-      // intersection
+      // Particle-wall intersection defined in header file depending on wall type, skip quad point if problem with intersection
       if (wall_fns[wall_type](xi, wall_normal, line_normal, rad_wall, numer)) continue;
 
       // Check for contact
@@ -791,7 +754,6 @@ void FixWallSpherharm::calc_force_torque(const int wall_type, int ishtype, doubl
         double zero_norm[3];
         MathExtra::zero3(zero_norm);
         if (file_count % 1 == 0) {
-          //write_surfpoints_to_file(ix_sf, false, inorm_sf, file_count, first_call);
           if ((first_call)) first_call = false;
         }
         ///////////
@@ -905,28 +867,6 @@ void FixWallSpherharm::get_quadrature_values(int num_quadrature){
   }
 }
 
-// TODO - Delete this temp method
-void FixWallSpherharm::write_surfpoints_to_file(double *x, int cont, double *norm, int file_count, bool first_call){
-
-  std::ofstream outfile;
-  if (!first_call){
-    outfile.open("test_dump/surfpoint_"+std::to_string(file_count)+".csv", std::ios_base::app);
-    if (outfile.is_open()) {
-      outfile << std::setprecision(16) << x[0] << "," << x[1] << "," << x[2] << "," << cont <<
-              "," << norm[0] << "," << norm[1] << "," << norm[2] << "\n";
-      outfile.close();
-    } else std::cout << "Unable to open file";
-  }
-  else {
-    outfile.open("test_dump/surfpoint_" + std::to_string(file_count) + ".csv");
-    if (outfile.is_open()) {
-      outfile << "x,y,z,cont,nx,ny,nz" << "\n";
-      outfile << std::setprecision(16) << x[0] << "," << x[1] << "," << x[2] << "," << cont <<
-              "," << norm[0] << "," << norm[1] << "," << norm[2] << "\n";
-      outfile.close();
-    } else std::cout << "Unable to open file";
-  }
-};
 
 
 // contact point cp is relative to particle a's centre
@@ -982,27 +922,19 @@ void FixWallSpherharm::calc_velCoulomb_force_torque(int ishtype, double const (&
   // Torque is Force x Distance - Need to get distance from contact point to particle centre
   MathExtra::cross3(cp, tforce, ttorque); // distance cross force = torque
 
-//  std::cout << tforce[0] << " " << tforce[1] << " "<< tforce[2] << " " << std::endl;
-//  std::cout << rw[0] << " " << rw[1] << " "<< rw[2] << " " << std::endl;
-
 }
 
 
 /* ---------------------------------------------------------------------- 
   A function that implements wall movement
 ------------------------------------------------------------------------- */
-// Adding wall movement -- function taken from gran/oldstyel - [MI - 24 October 2022]
 void FixWallSpherharm::move_wall() {
-  //~ Only update lo or hi if not NULL [KH - 27 November 2013]
-  // Upate w_boxlo & w_boxhi in Domain.cpp [MO -02 Sep 2015]
   if (lo != -BIG) { 
     lo+=vwall[wallstyle]*dt;
     domain->w_boxlo[wallstyle] = lo;
-    //MPI_Bcast(&domain->w_boxlo[wallstyle],1,MPI_DOUBLE,0,world);
   }
   if (hi != BIG) {
     hi+=vwall[wallstyle]*dt; 
     domain->w_boxhi[wallstyle] = hi;
-    //MPI_Bcast(&domain->w_boxhi[wallstyle],1,MPI_DOUBLE,0,world);
   }
 }
