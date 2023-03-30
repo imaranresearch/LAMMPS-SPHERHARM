@@ -377,10 +377,6 @@ namespace MathSpherharm {
    Calculates the quaternion required to rotate points generated
    on the (north) pole of an atom back to a given vector (between two atom centres normally).
    https://stackoverflow.com/questions/1171849/finding-quaternion-representing-the-rotation-from-one-vector-to-another
-
-    TODO - Need to comapre this against generating the quaterion from the
-    spherical coordinates (theta,phi) of the contact line from the COG of
-    each particle in space frame
  ------------------------------------------------------------------------- */
   void get_contact_quat(double (&xvecdist)[3], double (&quat)[4]) {
     double vert_unit_vec[3], cross_vec[3], c;
@@ -423,7 +419,6 @@ namespace MathSpherharm {
   // of another ellipsoid (see the selection between t1 and t2). Algorithm from:
   // http://www.illusioncatalyst.com/notes_files/mathematics/line_nu_sphere_intersection.php
 
-  // DOES NOT SEEM TO WORK, RECOMMEND USING SIMPLER GENERIC ALGORITHM FOR KNOWN ROTATION
 
   int line_ellipsoid_intersection(const double elipsoid_centre[3], const double elipse_x_axis[3],
                                   const double elipse_y_axis[3],const double elipse_z_axis[3],
