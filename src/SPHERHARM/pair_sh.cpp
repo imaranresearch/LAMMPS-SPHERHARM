@@ -599,11 +599,11 @@ void PairSH::calc_norm_force_torque(int kk_count, int ishtype, int jshtype, doub
        
         // MathExtra::transpose_matvec(irot, rad_sample1, rad_sample);
 
-        rad_sample = find_inner_radius(rad_body,radtol,theta_sf, phi_sf,theta_proj,phi_proj, xi, xj,radi,radj,ishtype,jshtype,irot,jrot);
+        // rad_sample = find_inner_radius(rad_body,radtol,theta_sf, phi_sf,theta_proj,phi_proj, xi, xj,radi,radj,ishtype,jshtype,irot,jrot);
 
           
         
-        // rad_sample = find_intersection_by_bisection(rad_body, radtol, theta_sf, phi_sf, xi, xj, radj, jshtype,jrot);
+        rad_sample = find_intersection_by_bisection(rad_body, radtol, theta_sf, phi_sf, xi, xj, radj, jshtype,jrot);
 
         // rad_sample = find_intersection_by_newton(ix_sf, xi, xj, theta_proj, phi_proj, rad_body, radtol, jshtype,
         //  jrot);
@@ -709,7 +709,7 @@ void PairSH::sphere_sphere_norm_force_torque(double ri, double rj, double delta,
 #
 
 
-double PairSH::find_inner_radius(double rad_body,double radtol, double theta_sf, double phi_sf,double theta_proj, double phi_proj,const double xi[3], const double xj[3], double radi,  double radj,int ishtype,int jshtype,double (&irot)[3][3],double (&jrot)[3][3]){
+double PairSH::find_inner_radius_directly(double rad_body,double radtol, double theta_sf, double phi_sf,double theta_proj, double phi_proj,const double xi[3], const double xj[3], double radi,  double radj,int ishtype,int jshtype,double (&irot)[3][3],double (&jrot)[3][3]){
 
   double rad_sample,rad_1,rad_sample1,dtemp,finalrad;
   double st,theta_proj1,phi_proj1;
@@ -942,6 +942,155 @@ double PairSH::find_intersection_by_newton(const double ix_sf[3], const double x
 
     // Solving for (x_{n+1} - x_{n}) using Gaussian Elimination.
 
+    for (int i=0; i<3; i++) {
+      // Search for maximum in this column
+      double maxEl = std::abs(Am[i][i]);
+      int maxRow = i;
+      for (int k=i+1; k<3; k++) {
+        if (std::abs(Am[k][i]) > maxEl) {
+          maxEl = std::abs(Am[k][i]);
+          maxRow = k;
+        }
+      }
+
+      // Swap maximum row with current row (column by column)
+      for (int k=i; k<3+1;k++) {
+        double tmp = Am[maxRow][k];
+        Am[maxRow][k] = Am[i][k];
+        Am[i][k] = tmp;
+      }
+
+      // Make all rows below this one 0 in current column
+      for (int k=i+1; k<3; k++) {
+        double z = -Am[k][i]/Am[i][i];
+        for (int j=i; j<3+1; j++) {
+          if (i==j) {
+            Am[k][j] = 0;
+          } else {
+            Am[k][j] += z * Am[i][j];
+          }
+        }
+      }
+    }
+
+    // Solve equation Ax=b for an upper triangular matrix A
+    for (int i=3-1; i>=0; i--) {
+      vec[i] = Am[i][3]/Am[i][i];
+      for (int k=i-1;k>=0; k--) {
+        Am[k][3] -= Am[k][i] * vec[i];
+      }
+    }
+
+    // Updating the function variables.
+    theta_n += alpha*vec[0];
+    phi_n += alpha*vec[1];
+    t_n += alpha*vec[2];
+
+    // Not radius, just recycling variable for the while condition. Using the magnitude of the error vector to
+    // determine when the Newton's Method has converged. We want each term in this vector to be as close to zero as
+    // possible
+    r = MathExtra::len3(vec);
+
+  }
+
+  return t_n;
+}
+
+
+
+/* ----------------------------------------------------------------------
+    Find the intersection between two surfaces where the ray cast from the
+    centre of particle "A" to it's surface with some fixed angle meets the
+    ray cast from the centre of particle "B" to it's surface
+    Problem is phrased as:
+     |xb - xa|                        |cos(phi)sin(theta)|    | a |
+     |yb - ya| + r(N,theta,phi) * R * |sin(phi)sin(theta)| - t| b | = 0
+     |zb - za|                        |   cos(theta)     |    | c |
+    where, (a,b,c) is the normal vector from the centre of particle "A" to
+    its surface and "t" is the length along this normal vector to the intersection,
+    (xa,ya,za) is the centre of Particle "A", R is the rotation matrix rotating the
+    particle "B" from its local frame to space frame, and "r" is the radius of particle
+    "B" at the given theta and phi value.
+    Solved using Newton's Method and Guassian Elimination.
+ ------------------------------------------------------------------------- */
+double PairSH::find_intersection_by_newton(const double ix_sf[3], const double xi[3], const double xj[3],
+                                           double theta_n, double phi_n, double t_n, const double radtol,
+                                           const int sht, const double jrot[3][3]){
+
+  double vec[3], temp[3], centre_diff[3];
+  double a, b, c;
+  double rp, rt, r;
+  double ct, st, cp, sp, cpct, spst, spct, cpst;
+  double Am[3][4];
+  double alpha=0.5; // not described in paper, used to prevent "back and forth" infinite action, slows convergence
+
+  // Vector between particle centres
+  centre_diff[0] = xi[0] - xj[0];
+  centre_diff[1] = xi[1] - xj[1];
+  centre_diff[2] = xi[2] - xj[2];
+
+  // Vector from centre of Particle A to the given surface point
+  temp[0] = ix_sf[0] - xi[0];
+  temp[1] = ix_sf[1] - xi[1];
+  temp[2] = ix_sf[2] - xi[2];
+
+
+  // Unit vector describing the direction from the centre of Particle A to the given surface point
+  MathExtra::norm3(temp);
+  a = temp[0];
+  b = temp[1];
+  c = temp[2];
+
+  r = 2*radtol;
+
+  // Not radius, just recycling variable for the while condition
+  while (r>radtol){
+
+    // Calculating repetitive terms
+    ct = cos(theta_n);
+    cp = cos(phi_n);
+    st = sin(theta_n);
+    sp = sin(phi_n);
+    cpct = cp*ct;
+    spst = sp*st;
+    spct = sp*ct;
+    cpst = cp*st;
+
+    // Get the radius and gradients for the current iteration of theta and theta.
+    r = avec->get_shape_radius_and_gradients(sht, theta_n, phi_n, rp, rt);
+
+    // TODO - Compare Gaussian Elimination to direct matrix inversion method
+    // Calculating the Jacobian of the three functions (i.e the three-dimensional coordiantes) and storing this in
+    // the augmented matrix
+    Am[0][0] = rt*(jrot[0][0]*cpst + jrot[0][1]*spst - jrot[0][2]*ct) + r*(jrot[0][0]*cpct + jrot[0][1]*spct - jrot[0][2]*st);
+    Am[1][0] = rt*(jrot[1][0]*cpst + jrot[1][1]*spst - jrot[1][2]*ct) + r*(jrot[1][0]*cpct + jrot[1][1]*spct - jrot[1][2]*st);
+    Am[2][0] = rt*(jrot[2][0]*cpst + jrot[2][1]*spst - jrot[2][2]*ct) + r*(jrot[2][0]*cpct + jrot[2][1]*spct - jrot[2][2]*st);
+    Am[0][1] = rp*(jrot[0][0]*cpst + jrot[0][1]*spst - jrot[0][2]*ct) + r*(-jrot[0][0]*spst + jrot[0][1]*cpst);
+    Am[1][1] = rp*(jrot[1][0]*cpst + jrot[1][1]*spst - jrot[1][2]*ct) + r*(-jrot[1][0]*spst + jrot[1][1]*cpst);
+    Am[2][1] = rp*(jrot[2][0]*cpst + jrot[2][1]*spst - jrot[2][2]*ct) + r*(-jrot[2][0]*spst + jrot[2][1]*cpst);
+    Am[0][2] = -a;
+    Am[1][2] = -b;
+    Am[2][2] = -c;
+
+    // Calculating the value of the three functions
+    temp[0] = r * cpst;
+    temp[1] = r * spst;
+    temp[2] = r * ct;
+    MathExtra::matvec(jrot, temp, vec); // from Particle B's body frame back to space frame
+    vec[0] -= (t_n * a + centre_diff[0]);
+    vec[1] -= (t_n * b + centre_diff[1]);
+    vec[2] -= (t_n * c + centre_diff[2]);
+    temp[0] = vec[0];
+    temp[1] = vec[1];
+    temp[2] = vec[2];
+
+    // Finishing the augmented matrix to be solved using Gaussian elimination
+    Am[0][3] = -vec[0];
+    Am[1][3] = -vec[1];
+    Am[2][3] = -vec[2];
+
+    // Solving for (x_{n+1} - x_{n}) using Gaussian Elimination.
+    // https://martin-thoma.com/solving-linear-equations-with-gaussian-elimination/
     for (int i=0; i<3; i++) {
       // Search for maximum in this column
       double maxEl = std::abs(Am[i][i]);

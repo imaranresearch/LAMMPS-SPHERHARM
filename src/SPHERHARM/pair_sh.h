@@ -54,7 +54,7 @@ class PairSH : public Pair {
                        double (&iquat_cont)[4], double (&iquat_sf_bf)[4], const double xi[3],
                        const double xj[3], double (&jrot)[3][3]);
 
-double find_inner_radius(double rad_body,double radtol, double theta_sf, double phi_sf,double theta_proj, double phi_proj,const double xi[3], const double xj[3], double radi,  double radj,int ishtype,int jshtype,double (&irot)[3][3],double (&jrot)[3][3]);
+double find_inner_radius_directly(double rad_body,double radtol, double theta_sf, double phi_sf,double theta_proj, double phi_proj,const double xi[3], const double xj[3], double radi,  double radj,int ishtype,int jshtype,double (&irot)[3][3],double (&jrot)[3][3]);
 
 // double find_inner_radius(const double ix_sf[3],
 //                                             const double xi[3], const double xj[3],  double radj, int jshtype,  double (&jrot)[3][3]);
