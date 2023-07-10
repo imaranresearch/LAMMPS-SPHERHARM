@@ -4,7 +4,7 @@ cd src/
 #make clean-all
 make yes-RIGID
 make yes-GRANULAR
-make yes-SPHERHARM
+make yes-SHDEM
 #make yes-SPHERHARMTEST
 make yes-MOLECULE
 make yes-ASPHERE
